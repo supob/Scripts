@@ -1,0 +1,1378 @@
+--// Library.lua  (UN SOLO ModuleScript)
+--// GTA 5 / FiveM Mod Menu Style UI Library for Roblox (client)
+--// Requisiti: TweenService, UserInputService, UIListLayout/UIPadding/UICorner/UIStroke
+--// Note NumLock: Roblox NON fornisce un modo affidabile per leggere lo stato NumLock ON/OFF.
+--//             La libreria usa KeyCode del Numpad (KeypadEight/Two/Four/Six) e funziona comunque.
+
+local Library = {}
+Library.__index = Library
+
+--// Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+--// Player refs
+local LocalPlayer = Players.LocalPlayer
+
+--// Small util
+local function clamp(n, a, b)
+	if n < a then return a end
+	if n > b then return b end
+	return n
+end
+
+local function roundToStep(value, step)
+	if step <= 0 then return value end
+	return math.floor((value / step) + 0.5) * step
+end
+
+local function safeDisconnect(conn)
+	if conn and typeof(conn) == "RBXScriptConnection" then
+		conn:Disconnect()
+	end
+end
+
+local function create(className, props)
+	local inst = Instance.new(className)
+	for k, v in pairs(props or {}) do
+		inst[k] = v
+	end
+	return inst
+end
+
+local function tween(inst, tweenInfo, props)
+	local t = TweenService:Create(inst, tweenInfo, props)
+	t:Play()
+	return t
+end
+
+--// Theme (GTA/FiveM-ish)
+local Theme = {
+	PanelBg = Color3.fromRGB(12, 12, 12),
+	PanelBgTransparency = 0.22,
+
+	Text = Color3.fromRGB(235, 235, 235),
+	MutedText = Color3.fromRGB(170, 170, 170),
+
+	Stroke = Color3.fromRGB(60, 60, 60),
+	StrokeTransparency = 0.25,
+
+	Glow = Color3.fromRGB(255, 255, 255),
+	GlowTransparency = 0.92,
+
+	HighlightBg = Color3.fromRGB(255, 255, 255),
+	HighlightTransparency = 0.92, -- subtle bright overlay
+	HighlightBar = Color3.fromRGB(235, 235, 235),
+
+	Accent = Color3.fromRGB(220, 220, 220),
+
+	SliderTrack = Color3.fromRGB(35, 35, 35),
+	SliderFill = Color3.fromRGB(235, 235, 235),
+
+	DropdownBg = Color3.fromRGB(10, 10, 10),
+	DropdownBgTransparency = 0.18,
+}
+
+local TweenFast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenMed  = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenSlow = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+--// Window class
+local Window = {}
+Window.__index = Window
+
+--// Section class
+local Section = {}
+Section.__index = Section
+
+--// Element base
+local Element = {}
+Element.__index = Element
+
+--////////////////////////////////////////////////////////////
+--////////////////////////  LIBRARY  /////////////////////////
+--////////////////////////////////////////////////////////////
+
+function Library.new()
+	local self = setmetatable({}, Library)
+	self._windows = {}
+	return self
+end
+
+-- Public constructor (preferred)
+function Library:CreateWindow(opts)
+	opts = opts or {}
+	local title = opts.Title or "Menu"
+	local subtitle = opts.Subtitle or "GTA Style"
+
+	local window = setmetatable({}, Window)
+	window._lib = self
+
+	window._title = title
+	window._subtitle = subtitle
+
+	window._sections = {}
+	window._sectionByName = {}
+
+	-- Navigation
+	window._mode = "SECTIONS" -- SECTIONS / ELEMENTS / DROPDOWN
+	window._history = {} -- stack of {mode=..., section=..., selection=...}
+	window._currentSection = nil
+	window._selectionIndex = 1
+	window._dropdownState = nil -- {element=..., open=true, selectionIndex=...}
+
+	-- Keybind
+	window._toggleKey = Enum.KeyCode.F8
+
+	-- Connections
+	window._connections = {}
+	window._destroyed = false
+
+	-- Build UI
+	window:_buildUI()
+	window:_attachToPlayerGui()
+	window:_bindInput()
+
+	-- Default hidden? (usually menus start hidden)
+	window:Hide(true)
+
+	table.insert(self._windows, window)
+	return window
+end
+
+--////////////////////////////////////////////////////////////
+--////////////////////////  WINDOW  //////////////////////////
+--////////////////////////////////////////////////////////////
+
+function Window:_ensurePlayerGui()
+	local pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	if pg then return pg end
+	-- wait a bit (client)
+	local t0 = os.clock()
+	repeat
+		pg = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+		RunService.Heartbeat:Wait()
+	until pg or (os.clock() - t0) > 5
+	return pg
+end
+
+function Window:_attachToPlayerGui()
+	local pg = self:_ensurePlayerGui()
+	if not pg then return end
+
+	-- If already parented correctly, ok
+	if self._screenGui and self._screenGui.Parent ~= pg then
+		self._screenGui.Parent = pg
+	end
+
+	-- Ensure persistence across respawn
+	-- ResetOnSpawn=false keeps it in PlayerGui when character resets.
+	self._screenGui.ResetOnSpawn = false
+
+	-- Also re-attach defensively if PlayerGui gets recreated (rare but possible)
+	self._connections._charAdded = LocalPlayer.CharacterAdded:Connect(function()
+		task.defer(function()
+			local pg2 = self:_ensurePlayerGui()
+			if pg2 and self._screenGui and self._screenGui.Parent ~= pg2 then
+				self._screenGui.Parent = pg2
+			end
+		end)
+	end)
+end
+
+function Window:_buildUI()
+	-- ScreenGui
+	local sg = create("ScreenGui", {
+		Name = "GTA_ModMenu_UI",
+		IgnoreGuiInset = false,
+		ResetOnSpawn = false,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	})
+	self._screenGui = sg
+
+	-- Root container
+	local root = create("Frame", {
+		Name = "Root",
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.fromOffset(40, 120),
+		Size = UDim2.fromOffset(420, 420),
+		BackgroundColor3 = Theme.PanelBg,
+		BackgroundTransparency = Theme.PanelBgTransparency,
+		Visible = true,
+	})
+	root.Parent = sg
+	self._root = root
+
+	create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = root})
+	create("UIStroke", {
+		Color = Theme.Stroke,
+		Thickness = 1,
+		Transparency = Theme.StrokeTransparency,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = root
+	})
+
+	-- Soft "glow" (fake) using an outer stroke frame
+	local glow = create("Frame", {
+		Name = "Glow",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 12, 1, 12),
+		Position = UDim2.new(0, -6, 0, -6),
+		ZIndex = root.ZIndex - 1,
+	})
+	glow.Parent = root
+	create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = glow})
+	create("UIStroke", {
+		Color = Theme.Glow,
+		Thickness = 2,
+		Transparency = Theme.GlowTransparency,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = glow
+	})
+
+	-- Header (draggable area)
+	local header = create("Frame", {
+		Name = "Header",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -18, 0, 64),
+		Position = UDim2.fromOffset(9, 8),
+	})
+	header.Parent = root
+	self._header = header
+
+	local titleLabel = create("TextLabel", {
+		Name = "Title",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 28),
+		Position = UDim2.fromOffset(0, 0),
+		Font = Enum.Font.GothamBold,
+		TextSize = 20,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Theme.Text,
+		Text = self._title,
+	})
+	titleLabel.Parent = header
+
+	local subtitleLabel = create("TextLabel", {
+		Name = "Subtitle",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 18),
+		Position = UDim2.fromOffset(0, 30),
+		Font = Enum.Font.Gotham,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Theme.MutedText,
+		Text = self._subtitle,
+	})
+	subtitleLabel.Parent = header
+
+	local divider = create("Frame", {
+		Name = "Divider",
+		BackgroundColor3 = Theme.Stroke,
+		BackgroundTransparency = 0.55,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 1),
+		Position = UDim2.new(0, 0, 1, -2),
+	})
+	divider.Parent = header
+
+	-- Content
+	local content = create("Frame", {
+		Name = "Content",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -18, 1, -86),
+		Position = UDim2.fromOffset(9, 80),
+	})
+	content.Parent = root
+	self._content = content
+
+	local scroll = create("ScrollingFrame", {
+		Name = "List",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 1, 0),
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.None,
+		ScrollBarThickness = 3,
+		ScrollBarImageTransparency = 0.35,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+	})
+	scroll.Parent = content
+	self._list = scroll
+
+	local pad = create("UIPadding", {
+		PaddingTop = UDim.new(0, 6),
+		PaddingBottom = UDim.new(0, 6),
+		PaddingLeft = UDim.new(0, 6),
+		PaddingRight = UDim.new(0, 6),
+	})
+	pad.Parent = scroll
+
+	local layout = create("UIListLayout", {
+		Padding = UDim.new(0, 6),
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	})
+	layout.Parent = scroll
+	self._layout = layout
+
+	-- Canvas auto update
+	self._connections._layoutChanged = layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		local h = layout.AbsoluteContentSize.Y
+		scroll.CanvasSize = UDim2.fromOffset(0, h + 12)
+	end)
+
+	-- Footer hint (optional)
+	local hint = create("TextLabel", {
+		Name = "Hint",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -18, 0, 18),
+		Position = UDim2.new(0, 9, 1, -22),
+		Font = Enum.Font.Gotham,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Theme.MutedText,
+		Text = "Numpad: 8/2 su-giù • 4/6 cambia • Enter seleziona • Backspace indietro • F8 toggle",
+	})
+	hint.Parent = root
+	self._hint = hint
+
+	-- Drag handling
+	self:_enableDrag()
+
+	-- Prepare "show/hide" animation state
+	self._root.Visible = true
+	self._root.BackgroundTransparency = 1
+	for _, d in ipairs(self._root:GetDescendants()) do
+		if d:IsA("TextLabel") or d:IsA("TextButton") then
+			d.TextTransparency = 1
+		elseif d:IsA("Frame") then
+			-- keep transparent frames
+		elseif d:IsA("UIStroke") then
+			d.Transparency = 1
+		end
+	end
+end
+
+function Window:_enableDrag()
+	local dragging = false
+	local dragStart
+	local startPos
+
+	local function inHeader(inputPos)
+		local absPos = self._header.AbsolutePosition
+		local absSize = self._header.AbsoluteSize
+		return inputPos.X >= absPos.X and inputPos.X <= (absPos.X + absSize.X)
+			and inputPos.Y >= absPos.Y and inputPos.Y <= (absPos.Y + absSize.Y)
+	end
+
+	self._connections._dragBegan = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe or not self._root.Visible then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			local pos = UserInputService:GetMouseLocation()
+			if inHeader(pos) then
+				dragging = true
+				dragStart = pos
+				startPos = self._root.Position
+			end
+		end
+	end)
+
+	self._connections._dragEnded = UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+
+	self._connections._dragMove = UserInputService.InputChanged:Connect(function(input, gpe)
+		if gpe or not dragging then return end
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			local pos = UserInputService:GetMouseLocation()
+			local delta = pos - dragStart
+			self._root.Position = UDim2.fromOffset(
+				startPos.X.Offset + delta.X,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+function Window:_bindInput()
+	-- One input connection per window
+	self._connections._inputBegan = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if self._destroyed then return end
+
+		-- Toggle always available
+		if input.KeyCode == self._toggleKey then
+			self:Toggle()
+			return
+		end
+
+		if not self:IsVisible() then return end
+
+		-- Navigation (Numpad only)
+		if input.KeyCode == Enum.KeyCode.KeypadEight then
+			self:_navUp()
+		elseif input.KeyCode == Enum.KeyCode.KeypadTwo then
+			self:_navDown()
+		elseif input.KeyCode == Enum.KeyCode.KeypadFour then
+			self:_navLeft()
+		elseif input.KeyCode == Enum.KeyCode.KeypadSix then
+			self:_navRight()
+		elseif input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter then
+			self:_navSelect()
+		elseif input.KeyCode == Enum.KeyCode.Backspace then
+			self:_navBack()
+		-- NumLock: non garantito (Roblox spesso non lo espone in modo utile)
+		elseif input.KeyCode == Enum.KeyCode.NumLock then
+			-- Non affidabile: non facciamo assunzioni sullo stato, ma lasciamo hook per eventuale debug.
+			-- Puoi ascoltare questo evento se vuoi, ma la libreria funziona anche senza.
+		end
+	end)
+end
+
+function Window:_clearList()
+	for _, child in ipairs(self._list:GetChildren()) do
+		if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+end
+
+function Window:_pushHistory()
+	table.insert(self._history, {
+		mode = self._mode,
+		section = self._currentSection,
+		selection = self._selectionIndex,
+		dropdown = self._dropdownState,
+	})
+end
+
+function Window:_popHistory()
+	local last = table.remove(self._history)
+	if not last then return nil end
+	self._mode = last.mode
+	self._currentSection = last.section
+	self._selectionIndex = last.selection
+	self._dropdownState = last.dropdown
+	return last
+end
+
+function Window:_transition(renderFn)
+	-- Smooth fade between views
+	local container = self._list
+	local fade = create("Frame", {
+		BackgroundColor3 = Theme.PanelBg,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 999,
+	})
+	fade.Parent = self._content
+
+	tween(fade, TweenMed, {BackgroundTransparency = 0.2})
+	task.delay(TweenMed.Time, function()
+		if self._destroyed then return end
+		renderFn()
+		tween(fade, TweenMed, {BackgroundTransparency = 1})
+		task.delay(TweenMed.Time, function()
+			if fade then fade:Destroy() end
+		end)
+	end)
+end
+
+function Window:_renderSections()
+	self:_clearList()
+
+	self._mode = "SECTIONS"
+	self._currentSection = nil
+	self._dropdownState = nil
+
+	-- Render each section as a selectable item
+	for i, sec in ipairs(self._sections) do
+		local row = self:_makeRowBase(i)
+		row.Name = "SectionRow_" .. sec.Name
+		row.Parent = self._list
+
+		row.Title.Text = sec.Name
+		row.Right.Text = "→"
+
+		-- Mouse click
+		row.Button.MouseButton1Click:Connect(function()
+			self._selectionIndex = i
+			self:_applyHighlight()
+			self:_enterSection(i)
+		end)
+	end
+
+	self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #self._sections))
+	self:_applyHighlight(true)
+end
+
+function Window:_renderElements(section)
+	self:_clearList()
+
+	self._mode = "ELEMENTS"
+	self._currentSection = section
+	self._dropdownState = nil
+
+	local visibleElements = section:_getVisibleElements()
+
+	for idx, el in ipairs(visibleElements) do
+		local row = self:_makeRowBase(idx)
+		row.Name = "ElementRow_" .. el.Id
+		row.Parent = self._list
+
+		-- Fill by type
+		row.Title.Text = el.Text
+
+		if el.Type == "Label" then
+			row.Right.Text = ""
+			row.Button.AutoButtonColor = false
+			row.Button.Active = false
+			row.Button.Selectable = false
+			row.Title.TextColor3 = Theme.MutedText
+		elseif el.Type == "Button" then
+			row.Right.Text = "→"
+			row.Button.MouseButton1Click:Connect(function()
+				self._selectionIndex = idx
+				self:_applyHighlight()
+				el:Activate()
+			end)
+		elseif el.Type == "Toggle" then
+			row.Right.Text = el.Value and "ON" or "OFF"
+			row.Right.TextColor3 = el.Value and Theme.Text or Theme.MutedText
+
+			row.Button.MouseButton1Click:Connect(function()
+				self._selectionIndex = idx
+				self:_applyHighlight()
+				el:Set(not el.Value)
+				row.Right.Text = el.Value and "ON" or "OFF"
+				row.Right.TextColor3 = el.Value and Theme.Text or Theme.MutedText
+			end)
+		elseif el.Type == "Slider" then
+			row.Right.Text = tostring(el.Value)
+
+			-- Slider bar
+			local barWrap = create("Frame", {
+				Name = "SliderWrap",
+				BackgroundTransparency = 1,
+				Size = UDim2.new(1, -180, 0, 10),
+				Position = UDim2.new(0, 14, 1, -14),
+				ZIndex = row.ZIndex + 2,
+			})
+			barWrap.Parent = row
+
+			local track = create("Frame", {
+				Name = "Track",
+				BackgroundColor3 = Theme.SliderTrack,
+				BackgroundTransparency = 0.2,
+				BorderSizePixel = 0,
+				Size = UDim2.new(1, 0, 1, 0),
+			})
+			track.Parent = barWrap
+			create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = track})
+
+			local fill = create("Frame", {
+				Name = "Fill",
+				BackgroundColor3 = Theme.SliderFill,
+				BackgroundTransparency = 0.05,
+				BorderSizePixel = 0,
+				Size = UDim2.new(0, 0, 1, 0),
+			})
+			fill.Parent = track
+			create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = fill})
+
+			local function updateFill()
+				local pct = 0
+				if el.Max > el.Min then
+					pct = (el.Value - el.Min) / (el.Max - el.Min)
+				end
+				pct = clamp(pct, 0, 1)
+				fill.Size = UDim2.new(pct, 0, 1, 0)
+				row.Right.Text = tostring(el.Value)
+			end
+			updateFill()
+
+			-- Mouse drag slider
+			local dragging = false
+			local function setFromMouse()
+				local mousePos = UserInputService:GetMouseLocation()
+				local absPos = track.AbsolutePosition
+				local absSize = track.AbsoluteSize
+				local x = clamp(mousePos.X - absPos.X, 0, absSize.X)
+				local pct = (absSize.X > 0) and (x / absSize.X) or 0
+				local raw = el.Min + (el.Max - el.Min) * pct
+				local v = roundToStep(raw, el.Step)
+				el:Set(v)
+				updateFill()
+			end
+
+			row.Button.MouseButton1Down:Connect(function()
+				self._selectionIndex = idx
+				self:_applyHighlight()
+				dragging = true
+				setFromMouse()
+			end)
+
+			UserInputService.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					dragging = false
+				end
+			end)
+
+			UserInputService.InputChanged:Connect(function(input, gpe)
+				if gpe then return end
+				if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+					setFromMouse()
+				end
+			end)
+
+			el._uiUpdate = updateFill
+		elseif el.Type == "Dropdown" then
+			row.Right.Text = el.Options[el.ValueIndex] or ""
+			row.Button.MouseButton1Click:Connect(function()
+				self._selectionIndex = idx
+				self:_applyHighlight()
+				self:_openDropdown(el, idx)
+			end)
+		end
+	end
+
+	self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #visibleElements))
+	self:_applyHighlight(true)
+end
+
+function Window:_renderDropdown(element, parentIndex)
+	self:_clearList()
+
+	self._mode = "DROPDOWN"
+	self._dropdownState = {
+		element = element,
+		parentIndex = parentIndex,
+		selectionIndex = element.ValueIndex or 1,
+	}
+
+	-- Title label
+	do
+		local row = self:_makeRowBase(1, true)
+		row.Title.Text = element.Text .. " (Select)"
+		row.Right.Text = ""
+		row.Button.Active = false
+		row.Button.Selectable = false
+		row.Title.TextColor3 = Theme.MutedText
+		row.Parent = self._list
+	end
+
+	for i, opt in ipairs(element.Options) do
+		local row = self:_makeRowBase(i + 1)
+		row.Parent = self._list
+		row.Title.Text = tostring(opt)
+		row.Right.Text = (i == (element.ValueIndex or 1)) and "✓" or ""
+
+		row.Button.MouseButton1Click:Connect(function()
+			self._dropdownState.selectionIndex = i
+			self:_applyHighlight()
+			element:SetIndex(i)
+			self:_closeDropdown()
+		end)
+	end
+
+	-- Selection points to options, not header label
+	self._selectionIndex = clamp((self._dropdownState.selectionIndex or 1) + 1, 2, math.max(2, #element.Options + 1))
+	self:_applyHighlight(true)
+end
+
+function Window:_openDropdown(element, parentIndex)
+	self:_pushHistory()
+	self:_transition(function()
+		self:_renderDropdown(element, parentIndex)
+	end)
+end
+
+function Window:_closeDropdown()
+	-- Go back to elements view preserving selection on parent element
+	local dd = self._dropdownState
+	if not dd then
+		self:_navBack()
+		return
+	end
+	local element = dd.element
+	local parentIndex = dd.parentIndex
+
+	self:_transition(function()
+		self:_renderElements(self._currentSection) -- currentSection in history might be set; but we restore after pop
+		-- restore selection on the dropdown element
+		self._selectionIndex = parentIndex
+		self:_applyHighlight(true)
+	end)
+
+	-- Pop history state to properly return mode/section
+	self:_popHistory()
+end
+
+function Window:_makeRowBase(layoutOrder, isHeaderOnly)
+	local row = create("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, isHeaderOnly and 30 or 44),
+		LayoutOrder = layoutOrder,
+	})
+
+	-- Click overlay
+	local btn = create("TextButton", {
+		Name = "Button",
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		Size = UDim2.new(1, 0, 1, 0),
+	})
+	btn.Parent = row
+
+	-- Highlight overlay
+	local hl = create("Frame", {
+		Name = "Highlight",
+		BackgroundColor3 = Theme.HighlightBg,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 2,
+	})
+	hl.Parent = row
+	create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = hl})
+
+	local bar = create("Frame", {
+		Name = "Bar",
+		BackgroundColor3 = Theme.HighlightBar,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.new(0, 3, 1, -12),
+		Position = UDim2.fromOffset(8, 6),
+		ZIndex = 3,
+	})
+	bar.Parent = row
+	create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = bar})
+
+	-- Text left
+	local title = create("TextLabel", {
+		Name = "Title",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -120, 1, 0),
+		Position = UDim2.fromOffset(16, 0),
+		Font = Enum.Font.Gotham,
+		TextSize = isHeaderOnly and 12 or 14,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Theme.Text,
+		Text = "",
+		ZIndex = 4,
+	})
+	title.Parent = row
+
+	-- Right text (value / arrow)
+	local right = create("TextLabel", {
+		Name = "Right",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(0, 90, 1, 0),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 0),
+		Font = Enum.Font.GothamSemibold,
+		TextSize = isHeaderOnly and 12 or 13,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextColor3 = Theme.MutedText,
+		Text = "",
+		ZIndex = 4,
+	})
+	right.Parent = row
+
+	-- Subtle row stroke when highlighted
+	local stroke = create("UIStroke", {
+		Color = Theme.Accent,
+		Thickness = 1,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+	stroke.Parent = hl
+
+	-- Mouse hover highlight (optional)
+	btn.MouseEnter:Connect(function()
+		if not self:IsVisible() then return end
+		-- don't override selected state
+	end)
+
+	row.Highlight = hl
+	row.Bar = bar
+	row.Title = title
+	row.Right = right
+	row.Button = btn
+	row._stroke = stroke
+
+	return row
+end
+
+function Window:_applyHighlight(force)
+	-- Determine list size depending on mode
+	local rows = {}
+	for _, child in ipairs(self._list:GetChildren()) do
+		if child:IsA("Frame") and child:FindFirstChild("Highlight") then
+			table.insert(rows, child)
+		end
+	end
+
+	-- In dropdown mode first row is header label, selection should be >=2
+	local sel = self._selectionIndex
+	sel = clamp(sel, 1, math.max(1, #rows))
+	self._selectionIndex = sel
+
+	-- Visual update
+	for i, row in ipairs(rows) do
+		local isSel = (i == sel)
+
+		-- If dropdown mode: keep header unselectable look
+		if self._mode == "DROPDOWN" and i == 1 then
+			isSel = false
+		end
+
+		local targetHl = isSel and Theme.HighlightTransparency or 1
+		local targetBar = isSel and 0.15 or 1
+		local targetStroke = isSel and 0.65 or 1
+
+		tween(row.Highlight, TweenFast, {BackgroundTransparency = targetHl})
+		tween(row.Bar, TweenFast, {BackgroundTransparency = targetBar})
+		if row._stroke then
+			tween(row._stroke, TweenFast, {Transparency = targetStroke})
+		end
+	end
+
+	self:_autoScrollToSelection(rows)
+end
+
+function Window:_autoScrollToSelection(rows)
+	local scroll = self._list
+	local sel = self._selectionIndex
+	if not rows[sel] then return end
+
+	local row = rows[sel]
+	local top = row.AbsolutePosition.Y
+	local bottom = top + row.AbsoluteSize.Y
+
+	local sTop = scroll.AbsolutePosition.Y
+	local sBottom = sTop + scroll.AbsoluteSize.Y
+
+	local canvasY = scroll.CanvasPosition.Y
+
+	-- If above view
+	if top < sTop + 6 then
+		local delta = (sTop + 6) - top
+		scroll.CanvasPosition = Vector2.new(0, math.max(0, canvasY - delta))
+	-- If below view
+	elseif bottom > sBottom - 6 then
+		local delta = bottom - (sBottom - 6)
+		scroll.CanvasPosition = Vector2.new(0, canvasY + delta)
+	end
+end
+
+function Window:_enterSection(index)
+	local sec = self._sections[index]
+	if not sec then return end
+	self:_pushHistory()
+	self:_transition(function()
+		self:_renderElements(sec)
+	end)
+end
+
+function Window:_currentVisibleElements()
+	if not self._currentSection then return {} end
+	return self._currentSection:_getVisibleElements()
+end
+
+--//////////////////// Navigation handlers ////////////////////
+
+function Window:_navUp()
+	if self._mode == "DROPDOWN" then
+		-- selection starts at 2
+		self._selectionIndex = clamp(self._selectionIndex - 1, 2, self:_dropdownMaxIndex())
+	else
+		self._selectionIndex = self._selectionIndex - 1
+		if self._mode == "SECTIONS" then
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #self._sections))
+		else
+			local els = self:_currentVisibleElements()
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+		end
+	end
+	self:_applyHighlight()
+end
+
+function Window:_navDown()
+	if self._mode == "DROPDOWN" then
+		self._selectionIndex = clamp(self._selectionIndex + 1, 2, self:_dropdownMaxIndex())
+	else
+		self._selectionIndex = self._selectionIndex + 1
+		if self._mode == "SECTIONS" then
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #self._sections))
+		else
+			local els = self:_currentVisibleElements()
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+		end
+	end
+	self:_applyHighlight()
+end
+
+function Window:_navLeft()
+	if self._mode == "ELEMENTS" then
+		local els = self:_currentVisibleElements()
+		local el = els[self._selectionIndex]
+		if not el then return end
+
+		if el.Type == "Slider" then
+			el:Set(el.Value - el.Step)
+			if el._uiUpdate then el._uiUpdate() end
+		elseif el.Type == "Toggle" then
+			el:Set(false)
+			self:_renderElements(self._currentSection) -- refresh right text quickly
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+			self:_applyHighlight(true)
+		elseif el.Type == "Dropdown" then
+			el:SetIndex((el.ValueIndex or 1) - 1)
+			self:_renderElements(self._currentSection)
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+			self:_applyHighlight(true)
+		end
+	elseif self._mode == "DROPDOWN" then
+		-- left/right also change selection in dropdown (optional)
+		self:_navUp()
+	end
+end
+
+function Window:_navRight()
+	if self._mode == "ELEMENTS" then
+		local els = self:_currentVisibleElements()
+		local el = els[self._selectionIndex]
+		if not el then return end
+
+		if el.Type == "Slider" then
+			el:Set(el.Value + el.Step)
+			if el._uiUpdate then el._uiUpdate() end
+		elseif el.Type == "Toggle" then
+			el:Set(true)
+			self:_renderElements(self._currentSection)
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+			self:_applyHighlight(true)
+		elseif el.Type == "Dropdown" then
+			el:SetIndex((el.ValueIndex or 1) + 1)
+			self:_renderElements(self._currentSection)
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+			self:_applyHighlight(true)
+		end
+	elseif self._mode == "DROPDOWN" then
+		self:_navDown()
+	end
+end
+
+function Window:_navSelect()
+	if self._mode == "SECTIONS" then
+		self:_enterSection(self._selectionIndex)
+		return
+	end
+
+	if self._mode == "ELEMENTS" then
+		local els = self:_currentVisibleElements()
+		local el = els[self._selectionIndex]
+		if not el then return end
+
+		if el.Type == "Button" then
+			el:Activate()
+		elseif el.Type == "Toggle" then
+			el:Set(not el.Value)
+			self:_renderElements(self._currentSection)
+			self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+			self:_applyHighlight(true)
+		elseif el.Type == "Slider" then
+			-- optional: no-op on Enter for sliders (or could reset)
+		elseif el.Type == "Dropdown" then
+			self:_openDropdown(el, self._selectionIndex)
+		end
+		return
+	end
+
+	if self._mode == "DROPDOWN" then
+		-- selectionIndex maps: row 1 = header, rows 2.. = options
+		local dd = self._dropdownState
+		if not dd then return end
+		local optIndex = clamp(self._selectionIndex - 1, 1, #dd.element.Options)
+		dd.element:SetIndex(optIndex)
+		self:_closeDropdown()
+	end
+end
+
+function Window:_navBack()
+	if self._mode == "DROPDOWN" then
+		self:_closeDropdown()
+		return
+	end
+
+	local prev = self:_popHistory()
+	if not prev then
+		-- already at root
+		self:_transition(function()
+			self:_renderSections()
+		end)
+		return
+	end
+
+	self:_transition(function()
+		if prev.mode == "SECTIONS" then
+			self:_renderSections()
+		elseif prev.mode == "ELEMENTS" and prev.section then
+			self:_renderElements(prev.section)
+		else
+			self:_renderSections()
+		end
+		self._selectionIndex = prev.selection or 1
+		self:_applyHighlight(true)
+	end)
+end
+
+function Window:_dropdownMaxIndex()
+	local dd = self._dropdownState
+	if not dd or not dd.element then return 2 end
+	return math.max(2, #dd.element.Options + 1)
+end
+
+--//////////////////// Public window API ////////////////////
+
+function Window:IsVisible()
+	return self._root and self._root.Visible or false
+end
+
+function Window:SetKeybind(keyCode)
+	if typeof(keyCode) == "EnumItem" and keyCode.EnumType == Enum.KeyCode then
+		self._toggleKey = keyCode
+	end
+end
+
+function Window:Show(instant)
+	if self._destroyed then return end
+	self:_attachToPlayerGui()
+
+	self._root.Visible = true
+	self._root.Active = true
+
+	-- Render if first time (or empty)
+	if #self._sections > 0 then
+		self:_renderSections()
+	else
+		self:_clearList()
+	end
+
+	if instant then
+		self._root.BackgroundTransparency = Theme.PanelBgTransparency
+		for _, d in ipairs(self._root:GetDescendants()) do
+			if d:IsA("TextLabel") or d:IsA("TextButton") then
+				d.TextTransparency = 0
+			elseif d:IsA("UIStroke") then
+				-- restore stroke transparencies
+				if d.Parent == self._root then
+					d.Transparency = Theme.StrokeTransparency
+				else
+					-- glow or highlight strokes
+					d.Transparency = d.Transparency -- keep
+				end
+			end
+		end
+		return
+	end
+
+	-- Animate: fade + slide
+	local startPos = self._root.Position
+	self._root.Position = startPos + UDim2.fromOffset(-10, 10)
+
+	tween(self._root, TweenSlow, {BackgroundTransparency = Theme.PanelBgTransparency, Position = startPos})
+
+	for _, d in ipairs(self._root:GetDescendants()) do
+		if d:IsA("TextLabel") or d:IsA("TextButton") then
+			tween(d, TweenSlow, {TextTransparency = 0})
+		elseif d:IsA("UIStroke") then
+			-- border stroke
+			if d.Parent == self._root then
+				tween(d, TweenSlow, {Transparency = Theme.StrokeTransparency})
+			end
+		end
+	end
+end
+
+function Window:Hide(instant)
+	if self._destroyed then return end
+	if not self._root.Visible then return end
+
+	if instant then
+		self._root.Visible = false
+		return
+	end
+
+	local endPos = self._root.Position + UDim2.fromOffset(-10, 10)
+	tween(self._root, TweenSlow, {BackgroundTransparency = 1, Position = endPos})
+
+	for _, d in ipairs(self._root:GetDescendants()) do
+		if d:IsA("TextLabel") or d:IsA("TextButton") then
+			tween(d, TweenSlow, {TextTransparency = 1})
+		elseif d:IsA("UIStroke") then
+			tween(d, TweenSlow, {Transparency = 1})
+		end
+	end
+
+	task.delay(TweenSlow.Time, function()
+		if self._destroyed then return end
+		self._root.Visible = false
+	end)
+end
+
+function Window:Toggle()
+	if self:IsVisible() then
+		self:Hide(false)
+	else
+		self:Show(false)
+	end
+end
+
+function Window:Destroy()
+	if self._destroyed then return end
+	self._destroyed = true
+
+	for _, c in pairs(self._connections) do
+		safeDisconnect(c)
+	end
+
+	if self._screenGui then
+		self._screenGui:Destroy()
+	end
+end
+
+-- Sections API
+function Window:AddSection(name)
+	assert(type(name) == "string" and #name > 0, "Section name must be a non-empty string")
+
+	if self._sectionByName[name] then
+		return self._sectionByName[name]
+	end
+
+	local sec = setmetatable({}, Section)
+	sec._window = self
+	sec.Name = name
+	sec._elements = {}
+	sec._nextId = 0
+
+	table.insert(self._sections, sec)
+	self._sectionByName[name] = sec
+
+	-- If visible and currently in sections mode, rerender to show it
+	if self:IsVisible() and self._mode == "SECTIONS" then
+		self:_renderSections()
+	end
+
+	return sec
+end
+
+-- Optional alias (if you prefer "tabs" naming)
+Window.AddTab = Window.AddSection
+
+--////////////////////////////////////////////////////////////
+--////////////////////////  SECTION  /////////////////////////
+--////////////////////////////////////////////////////////////
+
+function Section:_newElement(t, text)
+	self._nextId += 1
+	local el = setmetatable({}, Element)
+	el.Section = self
+	el.Window = self._window
+	el.Id = tostring(self.Name) .. "_" .. tostring(self._nextId)
+	el.Type = t
+	el.Text = text or ""
+	el.Visible = true
+	return el
+end
+
+function Section:_getVisibleElements()
+	local out = {}
+	for _, el in ipairs(self._elements) do
+		if el.Visible ~= false then
+			table.insert(out, el)
+		end
+	end
+	return out
+end
+
+function Section:_requestRefresh()
+	local w = self._window
+	if not w or w._destroyed then return end
+	if w:IsVisible() and w._mode == "ELEMENTS" and w._currentSection == self then
+		w:_renderElements(self)
+	end
+end
+
+function Section:AddLabel(text)
+	local el = self:_newElement("Label", text)
+	table.insert(self._elements, el)
+	self:_requestRefresh()
+	return el
+end
+
+function Section:AddButton(text, callback)
+	local el = self:_newElement("Button", text)
+	el.Callback = (type(callback) == "function") and callback or function() end
+	table.insert(self._elements, el)
+	self:_requestRefresh()
+	return el
+end
+
+function Section:AddToggle(text, default, callback)
+	local el = self:_newElement("Toggle", text)
+	el.Value = (default == true)
+	el.Callback = (type(callback) == "function") and callback or function(_) end
+	table.insert(self._elements, el)
+	self:_requestRefresh()
+	return el
+end
+
+function Section:AddSlider(text, min, max, step, default, callback)
+	local el = self:_newElement("Slider", text)
+	el.Min = tonumber(min) or 0
+	el.Max = tonumber(max) or 100
+	el.Step = tonumber(step) or 1
+	el.Value = tonumber(default) or el.Min
+	el.Value = clamp(roundToStep(el.Value, el.Step), el.Min, el.Max)
+	el.Callback = (type(callback) == "function") and callback or function(_) end
+	table.insert(self._elements, el)
+	self:_requestRefresh()
+	return el
+end
+
+function Section:AddDropdown(text, options, defaultIndex, callback)
+	local el = self:_newElement("Dropdown", text)
+	el.Options = (type(options) == "table") and options or {}
+	el.ValueIndex = tonumber(defaultIndex) or 1
+	el.ValueIndex = clamp(el.ValueIndex, 1, math.max(1, #el.Options))
+	el.Callback = (type(callback) == "function") and callback or function(_, _) end
+	table.insert(self._elements, el)
+	self:_requestRefresh()
+	return el
+end
+
+--////////////////////////////////////////////////////////////
+--////////////////////////  ELEMENT  /////////////////////////
+--////////////////////////////////////////////////////////////
+
+function Element:SetVisible(bool)
+	self.Visible = (bool == true)
+	self.Section:_requestRefresh()
+end
+
+function Element:Activate()
+	if self.Type == "Button" and self.Callback then
+		task.spawn(self.Callback)
+	end
+end
+
+function Element:Set(stateOrValue)
+	if self.Type == "Toggle" then
+		self.Value = (stateOrValue == true)
+		if self.Callback then
+			task.spawn(self.Callback, self.Value)
+		end
+	elseif self.Type == "Slider" then
+		local v = tonumber(stateOrValue) or self.Value
+		v = clamp(roundToStep(v, self.Step), self.Min, self.Max)
+		self.Value = v
+		if self.Callback then
+			task.spawn(self.Callback, self.Value)
+		end
+	elseif self.Type == "Dropdown" then
+		-- convenience: Set(index)
+		self:SetIndex(stateOrValue)
+	end
+	self.Section:_requestRefresh()
+end
+
+function Element:SetIndex(index)
+	if self.Type ~= "Dropdown" then return end
+	local i = tonumber(index) or self.ValueIndex or 1
+	i = clamp(i, 1, math.max(1, #self.Options))
+	self.ValueIndex = i
+	local value = self.Options[i]
+	if self.Callback then
+		task.spawn(self.Callback, value, i)
+	end
+	self.Section:_requestRefresh()
+end
+
+--////////////////////////////////////////////////////////////
+--/////////////////////  USAGE / HOW TO USE  //////////////////
+--////////////////////////////////////////////////////////////
+--[[
+
+✅ SETUP (Roblox client / LocalScript)
+1) Metti questo ModuleScript chiamato "Library" dove vuoi (es. ReplicatedStorage o PlayerScripts).
+2) In un LocalScript, fai require e crea il menu.
+
+✅ API PRINCIPALE
+local Library = require(path.to.Library)
+local UI = Library.new()
+local Menu = UI:CreateWindow({Title="My Menu", Subtitle="GTA Style"})
+
+-- Sezioni / Tabs
+local Main = Menu:AddSection("Main")
+local Visuals = Menu:AddSection("Visuals")
+
+-- Elementi
+Main:AddLabel("Player")
+Main:AddButton("Print Hello", function()
+	print("Hello!")
+end)
+
+local espToggle = Visuals:AddToggle("ESP", false, function(state)
+	print("ESP =", state)
+end)
+
+local speedSlider = Main:AddSlider("Speed", 1, 100, 1, 16, function(value)
+	print("Speed =", value)
+end)
+
+local modeDropdown = Main:AddDropdown("Mode", {"Legit", "Rage", "Custom"}, 1, function(value, index)
+	print("Mode =", value, index)
+end)
+
+-- Controllo visibilità
+Menu:Show()
+Menu:Hide()
+Menu:Toggle()
+
+-- Cambiare keybind toggle (default F8)
+Menu:SetKeybind(Enum.KeyCode.F8)
+
+-- Controllo elementi
+espToggle:Set(true)         -- Toggle
+speedSlider:Set(30)         -- Slider
+modeDropdown:SetIndex(2)    -- Dropdown
+espToggle:SetVisible(false) -- Hide element
+
+✅ NAVIGAZIONE (tastierino numerico)
+8 = su    (KeypadEight)
+2 = giù   (KeypadTwo)
+4 = sinistra (KeypadFour)   -> slider/toggle/dropdown cambia a sinistra
+6 = destra  (KeypadSix)     -> slider/toggle/dropdown cambia a destra
+Enter = seleziona / entra / toggle / apri dropdown
+Backspace = indietro
+
+✅ NOTE NUMLOCK
+Roblox non garantisce lo stato NumLock ON/OFF.
+La libreria usa direttamente i KeyCode del Numpad, quindi funziona comunque.
+
+✅ PERSISTENZA AL RESPAWN
+ScreenGui.ResetOnSpawn = false, così il menu resta dopo la morte/respawn.
+In più, la libreria prova anche a ri-agganciarsi al PlayerGui su CharacterAdded.
+
+]]--
+
+return Library
