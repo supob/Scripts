@@ -28,7 +28,7 @@ local function __remoteEnabled()
 
 	res = string.lower(res)
 	res = string.gsub(res, "%s+", "")
-	return res == "yes"
+	return res == "No"
 end
 
 if not __remoteEnabled() then
