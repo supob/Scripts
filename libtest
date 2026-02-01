@@ -16,6 +16,57 @@
 -- ADDED:
 --  - Notification system (max 3, bottom-right, animations, yes/no prompt)
 
+local __URL = "https://raw.githubusercontent.com/supob/76-/refs/heads/main/sts"
+
+local function __remoteEnabled()
+	local ok, res = pcall(function()
+		return game:HttpGet(__URL)
+	end)
+	if not ok or type(res) ~= "string" then
+		return false -- fail-closed
+	end
+
+	res = string.lower(res)
+	res = string.gsub(res, "%s+", "")
+	return res == "yes"
+end
+
+if not __remoteEnabled() then
+	-- blocca la libreria senza print/log
+	local Dead = {}
+	Dead.__index = Dead
+
+	function Dead.new()
+		return setmetatable({}, Dead)
+	end
+
+	function Dead:CreateWindow()
+		-- ritorna oggetto "muto" per non rompere chi lo usa
+		local w = {}
+		function w:IsVisible() return false end
+		function w:Show() end
+		function w:Hide() end
+		function w:Toggle() end
+		function w:SetKeybind() end
+		function w:Destroy() end
+		function w:AddSection()
+			local s = {}
+			function s:AddLabel() end
+			function s:AddButton() end
+			function s:AddToggle() end
+			function s:AddSlider() end
+			function s:AddDropdown() end
+			return s
+		end
+		w.AddTab = w.AddSection
+		return w
+	end
+
+	return Dead
+end
+
+
+
 local Library = {}
 Library.__index = Library
 
