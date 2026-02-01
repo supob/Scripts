@@ -1,6 +1,5 @@
 -- Library.lua (ModuleScript)
 -- GTA / FiveM style UI library (client) - FULL
--- SERVER-SAFE + LocalPlayer lazy
 -- FIXED:
 --  - Drag: whole header area draggable
 --  - Slider: no re-render during drag/hold (no disappearing/reset)
@@ -8,6 +7,12 @@
 --  - Hold: Numpad 8/2 list scroll, 4/6 slider repeat (smooth + mild accel)
 -- THEME:
 --  - Purple / Dark Purple (clean + GTA-ish)
+-- HARDENED:
+--  - server-safe stub
+--  - LocalPlayer lazy
+--  - Random ScreenGui name + attribute tag
+--  - Anti-duplicate (reuse existing gui)
+--  - metatable locked (harder to patch)
 
 local Library = {}
 Library.__index = Library
@@ -16,16 +21,31 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
---////////////////////////////////////////////////////////////
--- SERVER-SAFE STUB
---////////////////////////////////////////////////////////////
+--============================================================
+-- HARDEN CORE
+--============================================================
 
--- Se qualcuno fa require() dal server, non deve esplodere (LocalPlayer/UI/input non esistono).
+local __UID = "UI_" .. HttpService:GenerateGUID(false)
+local __TAG = "__UI_TAG_" .. __UID
+local __META_LOCK_NAME = "locked"
+
+local function __lockMeta(obj, methods)
+	-- locks metatable visibility while keeping behavior
+	return setmetatable(obj, {
+		__index = methods,
+		__metatable = __META_LOCK_NAME
+	})
+end
+
+--============================================================
+-- SERVER SAFE STUB
+--============================================================
+
 if RunService:IsServer() then
 	local StubWindow = {}
 	StubWindow.__index = StubWindow
-
 	local StubSection = {}
 	StubSection.__index = StubSection
 
@@ -34,7 +54,8 @@ if RunService:IsServer() then
 	end
 
 	function Library:CreateWindow()
-		warn("[Library] Chiamato dal SERVER: la UI esiste solo sul CLIENT. Nessuna UI creata.")
+		-- no "Library" string in output
+		warn("[UI] called on server: UI is client-only. No UI created.")
 		local w = setmetatable({}, StubWindow)
 		function w:IsVisible() return false end
 		function w:Show() end
@@ -58,9 +79,9 @@ if RunService:IsServer() then
 	return Library
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- LocalPlayer lazy (CLIENT)
---////////////////////////////////////////////////////////////
+--============================================================
 
 local function getLocalPlayer()
 	local lp = Players.LocalPlayer
@@ -71,9 +92,9 @@ local function getLocalPlayer()
 	return Players.LocalPlayer
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- UTILS
---////////////////////////////////////////////////////////////
+--============================================================
 
 local function clamp(n, a, b)
 	if n < a then return a end
@@ -106,36 +127,29 @@ local function tween(inst, info, props)
 	return t
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- THEME (PURPLE)
---////////////////////////////////////////////////////////////
+--============================================================
 
 local Theme = {
-	-- panel
 	PanelBg = Color3.fromRGB(16, 10, 24),
 	PanelBgTransparency = 0.18,
 
-	-- text
 	Text = Color3.fromRGB(242, 242, 245),
 	MutedText = Color3.fromRGB(190, 185, 200),
 
-	-- borders / strokes
 	Stroke = Color3.fromRGB(110, 80, 155),
 	StrokeTransparency = 0.22,
 
-	-- glow outline
 	Glow = Color3.fromRGB(170, 120, 255),
 	GlowTransparency = 0.90,
 
-	-- selection highlight
 	HighlightBg = Color3.fromRGB(200, 160, 255),
 	HighlightTransparency = 0.90,
 	HighlightBar = Color3.fromRGB(205, 170, 255),
 
-	-- accent
 	Accent = Color3.fromRGB(170, 120, 255),
 
-	-- slider
 	SliderTrack = Color3.fromRGB(40, 28, 58),
 	SliderFill = Color3.fromRGB(200, 160, 255),
 }
@@ -144,9 +158,9 @@ local TweenFast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirectio
 local TweenMed  = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TweenSlow = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- CLASSES
---////////////////////////////////////////////////////////////
+--============================================================
 
 local Window = {}
 Window.__index = Window
@@ -157,9 +171,9 @@ Section.__index = Section
 local Element = {}
 Element.__index = Element
 
---////////////////////////////////////////////////////////////
--- LIBRARY
---////////////////////////////////////////////////////////////
+--============================================================
+-- MAIN
+--============================================================
 
 function Library.new()
 	local self = setmetatable({}, Library)
@@ -172,35 +186,31 @@ function Library:CreateWindow(opts)
 
 	local lp = getLocalPlayer()
 	if not lp then
-		error("[Library] LocalPlayer non disponibile: assicurati di eseguire dal client (LocalScript) e non troppo presto.")
+		error("[UI] LocalPlayer not available (run on client, not too early).", 2)
 	end
 
-	local window = setmetatable({}, Window)
+	local window = __lockMeta({}, Window)
 	window._lib = self
 	window._localPlayer = lp
-
 	window._title = opts.Title or "Menu"
 	window._subtitle = opts.Subtitle or "GTA Style"
 
 	window._sections = {}
 	window._sectionByName = {}
 
-	window._mode = "SECTIONS" -- SECTIONS | ELEMENTS | DROPDOWN
+	window._mode = "SECTIONS"
 	window._history = {}
 	window._currentSection = nil
 	window._selectionIndex = 1
-	window._dropdownState = nil -- {element=...}
+	window._dropdownState = nil
 
 	window._toggleKey = Enum.KeyCode.F8
 	window._connections = {}
 	window._destroyed = false
-
 	window._rowRefs = {}
 
-	-- slider drag state (mouse)
-	window._activeSliderDrag = nil -- {element, track, fill, right}
+	window._activeSliderDrag = nil
 
-	-- hold keys
 	window._hold = {
 		up=false, down=false, left=false, right=false,
 		active=false,
@@ -229,9 +239,9 @@ function Library:CreateWindow(opts)
 	return window
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- WINDOW CORE
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Window:_ensurePlayerGui()
 	local lp = self._localPlayer or getLocalPlayer()
@@ -240,13 +250,11 @@ function Window:_ensurePlayerGui()
 
 	local pg = lp:FindFirstChildOfClass("PlayerGui")
 	if pg then return pg end
-
 	local t0 = os.clock()
 	repeat
 		pg = lp:FindFirstChildOfClass("PlayerGui")
 		RunService.Heartbeat:Wait()
 	until pg or (os.clock() - t0) > 5
-
 	return pg
 end
 
@@ -271,12 +279,34 @@ function Window:_attachToPlayerGui()
 end
 
 function Window:_buildUI()
+	--========================================================
+	-- Anti-duplicate + random ScreenGui name + attribute tag
+	--========================================================
+	local pg = self:_ensurePlayerGui()
+	if pg then
+		for _, g in ipairs(pg:GetChildren()) do
+			if g:IsA("ScreenGui") and g:GetAttribute(__TAG) == true then
+				self._screenGui = g
+				local existingRoot = g:FindFirstChild("Root", true)
+				if existingRoot then
+					self._root = existingRoot
+					self._header = existingRoot:FindFirstChild("Header", true)
+					self._content = existingRoot:FindFirstChild("Content", true)
+					self._list = existingRoot:FindFirstChild("List", true)
+					self._layout = self._list and self._list:FindFirstChildOfClass("UIListLayout") or nil
+					return
+				end
+			end
+		end
+	end
+
 	local sg = create("ScreenGui", {
-		Name = "GTA_ModMenu_UI",
+		Name = __UID,
 		IgnoreGuiInset = false,
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	})
+	sg:SetAttribute(__TAG, true)
 	self._screenGui = sg
 
 	local root = create("Frame", {
@@ -325,7 +355,6 @@ function Window:_buildUI()
 	header.Parent = root
 	self._header = header
 
-	-- ✅ Drag zone = header intero
 	local dragZone = create("TextButton", {
 		Name = "DragZone",
 		Text = "",
@@ -338,7 +367,6 @@ function Window:_buildUI()
 	dragZone.Parent = header
 	self._dragZone = dragZone
 
-	-- Title a bit lower
 	local titleLabel = create("TextLabel", {
 		Name = "Title",
 		BackgroundTransparency = 1,
@@ -437,7 +465,6 @@ function Window:_buildUI()
 
 	self:_enableDragFromZone()
 
-	-- start hidden for anim
 	self._root.Visible = true
 	self._root.BackgroundTransparency = 1
 	for _, d in ipairs(self._root:GetDescendants()) do
@@ -449,9 +476,9 @@ function Window:_buildUI()
 	end
 end
 
---////////////////////////////////////////////////////////////
--- DRAG MENU (header intero)
---////////////////////////////////////////////////////////////
+--============================================================
+-- DRAG MENU
+--============================================================
 
 function Window:_enableDragFromZone()
 	local dragging = false
@@ -480,9 +507,9 @@ function Window:_enableDragFromZone()
 	end)
 end
 
---////////////////////////////////////////////////////////////
--- SLIDER DRAG LOOP (RenderStepped)
---////////////////////////////////////////////////////////////
+--============================================================
+-- SLIDER DRAG LOOP
+--============================================================
 
 function Window:_startSliderDragLoop()
 	self._connections._sliderDragLoop = RunService.RenderStepped:Connect(function()
@@ -517,7 +544,6 @@ function Window:_updateSliderFromMouse(drag)
 	local raw = el.Min + (el.Max - el.Min) * pct
 	local v = clamp(roundToStep(raw, el.Step), el.Min, el.Max)
 
-	-- IMPORTANT: no refresh
 	el:_setSliderValueNoRefresh(v)
 
 	local fillPct = 0
@@ -530,9 +556,9 @@ function Window:_updateSliderFromMouse(drag)
 	if right then right.Text = tostring(el.Value) end
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- INPUT
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Window:_bindInput()
 	self._connections._inputBegan = UserInputService.InputBegan:Connect(function(input, gpe)
@@ -577,9 +603,9 @@ function Window:_bindInput()
 	end)
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- HOLD LOOP
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Window:_startHoldLoop()
 	local hold = self._hold
@@ -660,9 +686,9 @@ function Window:_startHoldLoop()
 	end)
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- UI HELPERS
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Window:_clearList()
 	self._rowRefs = {}
@@ -821,9 +847,9 @@ function Window:_ensureSelectionVisible()
 	end
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- RENDER
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Window:_renderSections()
 	self:_clearList()
@@ -931,7 +957,6 @@ function Window:_renderElements(section)
 			el._uiUpdate = update
 			update()
 
-			-- start drag ONLY on track
 			track.InputBegan:Connect(function(input)
 				if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 				self._selectionIndex = i
@@ -939,7 +964,6 @@ function Window:_renderElements(section)
 				self._activeSliderDrag = {element = el, track = track, fill = fill, right = r.right}
 			end)
 
-			-- clicking the row selects the slider too (no drag)
 			r.btn.MouseButton1Click:Connect(function()
 				self._selectionIndex = i
 				self:_applyHighlight()
@@ -1017,9 +1041,9 @@ function Window:_enterSection(idx)
 	end)
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- NAV
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Window:_navUp()
 	self._selectionIndex -= 1
@@ -1158,9 +1182,9 @@ function Window:_navBack()
 	end
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- WINDOW API
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Window:IsVisible()
 	return self._root and self._root.Visible or false
@@ -1259,7 +1283,7 @@ function Window:AddSection(name)
 		return self._sectionByName[name]
 	end
 
-	local sec = setmetatable({}, Section)
+	local sec = __lockMeta({}, Section)
 	sec._window = self
 	sec.Name = name
 	sec._elements = {}
@@ -1276,13 +1300,13 @@ end
 
 Window.AddTab = Window.AddSection
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- SECTION
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Section:_newElement(t, text)
 	self._nextId += 1
-	local el = setmetatable({}, Element)
+	local el = __lockMeta({}, Element)
 	el.Section = self
 	el.Window = self._window
 	el.Id = self.Name .. "_" .. tostring(self._nextId)
@@ -1355,9 +1379,9 @@ function Section:AddDropdown(text, options, defaultIndex, cb)
 	return el
 end
 
---////////////////////////////////////////////////////////////
+--============================================================
 -- ELEMENT
---////////////////////////////////////////////////////////////
+--============================================================
 
 function Element:SetVisible(b)
 	self.Visible = (b == true)
@@ -1370,14 +1394,12 @@ function Element:Activate()
 	end
 end
 
--- ✅ Slider internal setter: NO refresh (CRUCIALE per drag/hold)
 function Element:_setSliderValueNoRefresh(v)
 	if self.Type ~= "Slider" then return end
 	local nv = clamp(roundToStep(tonumber(v) or self.Value, self.Step), self.Min, self.Max)
 	if nv == self.Value then return end
 	self.Value = nv
 	if self.Callback then task.spawn(self.Callback, self.Value) end
-	-- NO refresh
 end
 
 function Element:Set(v)
