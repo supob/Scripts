@@ -13,6 +13,8 @@
 --  - Random ScreenGui name
 --  - Anti-duplicate via stable attribute tag (works across re-exec)
 --  - metatable locked (harder to patch)
+-- ADDED:
+--  - Notification system (max 3, bottom-right, animations, yes/no prompt)
 
 local Library = {}
 Library.__index = Library
@@ -27,9 +29,8 @@ local HttpService = game:GetService("HttpService")
 -- HARDEN CORE
 --============================================================
 
--- Nome random, ma TAG stabile per riconoscere istanze già create
 local __UID = "UI_" .. HttpService:GenerateGUID(false)
-local __TAG = "__UI_STABLE_TAG_GTA_MENU" -- STABILE, non random
+local __TAG = "__UI_STABLE_TAG_GTA_MENU" -- STABILE per anti-duplicazione
 local __META_LOCK_NAME = "locked"
 
 local function __lockMeta(obj, methods)
@@ -71,6 +72,8 @@ if RunService:IsServer() then
 			return s
 		end
 		w.AddTab = w.AddSection
+		function w:Notify() end
+		function w:Prompt(_, cb) if type(cb)=="function" then cb(false) end end
 		return w
 	end
 
@@ -150,11 +153,23 @@ local Theme = {
 
 	SliderTrack = Color3.fromRGB(40, 28, 58),
 	SliderFill = Color3.fromRGB(200, 160, 255),
+
+	-- Notifiche
+	NotifBg = Color3.fromRGB(18, 12, 28),
+	NotifStroke = Color3.fromRGB(120, 85, 175),
+	NotifShadow = Color3.fromRGB(170, 120, 255),
+
+	Info = Color3.fromRGB(200, 160, 255),
+	Success = Color3.fromRGB(150, 255, 200),
+	Warning = Color3.fromRGB(255, 215, 130),
+	Error = Color3.fromRGB(255, 140, 140),
 }
 
 local TweenFast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TweenMed  = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TweenSlow = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenNotifIn  = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenNotifOut = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 --============================================================
 -- CLASSES
@@ -225,13 +240,29 @@ function Library:CreateWindow(opts)
 		maxAccel = 1.25,
 	}
 
+	-- Notification state
+	window._notif = {
+		container = nil,
+		stack = {}, -- {frame=, alive=true, createdAt=}
+		max = 3,
+	}
+
 	window:_buildUI()
 	window:_attachToPlayerGui()
 	window:_bindInput()
 	window:_startHoldLoop()
 	window:_startSliderDragLoop()
+	window:_buildNotifications()
 
 	window:Hide(true)
+
+	-- “auto-clean bootstrap” dopo 1s: rinomina la ScreenGui (resta funzionante)
+	task.delay(1, function()
+		if window._destroyed then return end
+		if window._screenGui and window._screenGui.Parent then
+			window._screenGui.Name = "UI_" .. HttpService:GenerateGUID(false)
+		end
+	end)
 
 	table.insert(self._windows, window)
 	return window
@@ -286,15 +317,10 @@ function Window:_buildUI()
 
 		for _, g in ipairs(pg:GetChildren()) do
 			if g:IsA("ScreenGui") and g:GetAttribute(__TAG) == true then
-				if not found then
-					found = g
-				else
-					table.insert(extras, g)
-				end
+				if not found then found = g else table.insert(extras, g) end
 			end
 		end
 
-		-- se ce ne sono più copie, distruggi le extra (silenzioso)
 		for _, ex in ipairs(extras) do
 			pcall(function() ex:Destroy() end)
 		end
@@ -311,8 +337,8 @@ function Window:_buildUI()
 				self._dragZone = self._header and self._header:FindFirstChild("DragZone", true) or nil
 				self._titleLabel = self._header and self._header:FindFirstChild("Title", true) or nil
 				self._subtitleLabel = self._header and self._header:FindFirstChild("Subtitle", true) or nil
+				self._hint = existingRoot:FindFirstChild("Hint", true)
 
-				-- Rebind drag in modo safe (evita doppie connessioni)
 				if self._dragZone and self._root then
 					self:_enableDragFromZone(true)
 				end
@@ -321,9 +347,6 @@ function Window:_buildUI()
 		end
 	end
 
-	--========================================================
-	-- Create new UI (random name but stable tag)
-	--========================================================
 	local sg = create("ScreenGui", {
 		Name = __UID,
 		IgnoreGuiInset = false,
@@ -333,11 +356,10 @@ function Window:_buildUI()
 	sg:SetAttribute(__TAG, true)
 	self._screenGui = sg
 
-	-- ↑ altezza aumentata un po’
 	local root = create("Frame", {
 		Name = "Root",
 		Position = UDim2.fromOffset(40, 120),
-		Size = UDim2.fromOffset(340, 392), -- prima 360
+		Size = UDim2.fromOffset(340, 392),
 		BackgroundColor3 = Theme.PanelBg,
 		BackgroundTransparency = Theme.PanelBgTransparency,
 		Visible = true,
@@ -435,8 +457,7 @@ function Window:_buildUI()
 	local content = create("Frame", {
 		Name = "Content",
 		BackgroundTransparency = 1,
-		-- prima era 1, -76 (finiva sotto la hint e copriva)
-		Size = UDim2.new(1, -16, 1, -92), -- lascia spazio sicuro alla hint
+		Size = UDim2.new(1, -16, 1, -92),
 		Position = UDim2.fromOffset(8, 70),
 	})
 	content.Parent = root
@@ -454,10 +475,9 @@ function Window:_buildUI()
 	scroll.Parent = content
 	self._list = scroll
 
-	-- padding: più spazio sotto così gli ultimi elementi non finiscono “sotto”
 	create("UIPadding", {
 		PaddingTop = UDim.new(0, 6),
-		PaddingBottom = UDim.new(0, 24), -- prima 6
+		PaddingBottom = UDim.new(0, 24),
 		PaddingLeft = UDim.new(0, 6),
 		PaddingRight = UDim.new(0, 6),
 		Parent = scroll
@@ -504,11 +524,288 @@ function Window:_buildUI()
 end
 
 --============================================================
+-- NOTIFICATIONS
+--============================================================
+
+function Window:_buildNotifications()
+	if self._notif.container and self._notif.container.Parent then return end
+	if not self._screenGui then return end
+
+	local holder = create("Frame", {
+		Name = "Notifications",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(320, 220),
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -18, 1, -18),
+		ZIndex = 5000,
+	})
+	holder.Parent = self._screenGui
+	self._notif.container = holder
+
+	local list = create("UIListLayout", {
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		FillDirection = Enum.FillDirection.Vertical,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		Padding = UDim.new(0, 10),
+	})
+	list.Parent = holder
+	self._notif._layout = list
+end
+
+local function _typeColor(t)
+	if t == "Success" then return Theme.Success end
+	if t == "Warning" then return Theme.Warning end
+	if t == "Error" then return Theme.Error end
+	return Theme.Info
+end
+
+function Window:_notifRemoveOldestIfNeeded()
+	if #self._notif.stack < self._notif.max then return end
+	local oldest = self._notif.stack[1]
+	if not oldest or not oldest.frame then
+		table.remove(self._notif.stack, 1)
+		return
+	end
+	self:_dismissNotification(oldest, true)
+	table.remove(self._notif.stack, 1)
+end
+
+function Window:_dismissNotification(n, instant)
+	if not n or not n.frame then return end
+	if n.alive == false then return end
+	n.alive = false
+
+	local fr = n.frame
+	if not fr.Parent then return end
+
+	if instant then
+		pcall(function() fr:Destroy() end)
+		return
+	end
+
+	local startPos = fr.Position
+	tween(fr, TweenNotifOut, {Position = startPos + UDim2.fromOffset(40, 0), BackgroundTransparency = 1})
+	for _, d in ipairs(fr:GetDescendants()) do
+		if d:IsA("TextLabel") or d:IsA("TextButton") then
+			pcall(function() tween(d, TweenNotifOut, {TextTransparency = 1}) end)
+		elseif d:IsA("UIStroke") then
+			pcall(function() tween(d, TweenNotifOut, {Transparency = 1}) end)
+		end
+	end
+
+	task.delay(TweenNotifOut.Time + 0.03, function()
+		pcall(function() fr:Destroy() end)
+	end)
+end
+
+function Window:_createNotification(opts, isPrompt, cb)
+	opts = opts or {}
+	local title = tostring(opts.Title or "Notifica")
+	local text = tostring(opts.Text or "")
+	local ntype = tostring(opts.Type or "Info")
+	local duration = tonumber(opts.Duration)
+	if duration == nil then duration = isPrompt and 10 or 3 end
+	duration = clamp(duration, 1, 60)
+
+	self:_buildNotifications()
+	if not self._notif.container then return end
+
+	self:_notifRemoveOldestIfNeeded()
+
+	local fr = create("Frame", {
+		BackgroundColor3 = Theme.NotifBg,
+		BackgroundTransparency = 0.06,
+		BorderSizePixel = 0,
+		Size = UDim2.fromOffset(300, isPrompt and 110 or 90),
+		Position = UDim2.new(0, 40, 0, 0), -- entra da destra
+		ZIndex = 5100,
+	})
+	fr.Parent = self._notif.container
+	create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = fr})
+
+	local st = create("UIStroke", {
+		Color = Theme.NotifStroke,
+		Thickness = 1,
+		Transparency = 0.25,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = fr
+	})
+
+	local glow = create("UIStroke", {
+		Color = Theme.NotifShadow,
+		Thickness = 2,
+		Transparency = 0.90,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = fr
+	})
+
+	local accent = create("Frame", {
+		BackgroundColor3 = _typeColor(ntype),
+		BackgroundTransparency = 0.15,
+		BorderSizePixel = 0,
+		Size = UDim2.new(0, 4, 1, -16),
+		Position = UDim2.fromOffset(10, 8),
+		ZIndex = 5200,
+	})
+	accent.Parent = fr
+	create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = accent})
+
+	local tLabel = create("TextLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -52, 0, 22),
+		Position = UDim2.fromOffset(22, 10),
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = Theme.Text,
+		Text = title,
+		ZIndex = 5200,
+	})
+	tLabel.Parent = fr
+
+	local typeLabel = create("TextLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(0, 90, 0, 16),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -30, 0, 12),
+		Font = Enum.Font.GothamSemibold,
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextColor3 = Theme.MutedText,
+		Text = string.upper(ntype),
+		ZIndex = 5200,
+	})
+	typeLabel.Parent = fr
+
+	local xBtn = create("TextButton", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(18, 18),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 10),
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+		TextColor3 = Theme.MutedText,
+		Text = "×",
+		AutoButtonColor = false,
+		ZIndex = 5300,
+	})
+	xBtn.Parent = fr
+
+	local body = create("TextLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -30, 0, isPrompt and 36 or 42),
+		Position = UDim2.fromOffset(22, 34),
+		Font = Enum.Font.Gotham,
+		TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextColor3 = Theme.MutedText,
+		TextWrapped = true,
+		Text = text,
+		ZIndex = 5200,
+	})
+	body.Parent = fr
+
+	local n = {frame = fr, alive = true, createdAt = os.clock()}
+	table.insert(self._notif.stack, n)
+
+	local function closeNow()
+		self:_dismissNotification(n, false)
+		for i = #self._notif.stack, 1, -1 do
+			if self._notif.stack[i] == n then
+				table.remove(self._notif.stack, i)
+				break
+			end
+		end
+	end
+
+	xBtn.MouseButton1Click:Connect(closeNow)
+
+	if isPrompt then
+		local yes = create("TextButton", {
+			BackgroundColor3 = Theme.Accent,
+			BackgroundTransparency = 0.10,
+			BorderSizePixel = 0,
+			Size = UDim2.fromOffset(96, 26),
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 22, 1, -12),
+			Font = Enum.Font.GothamBold,
+			TextSize = 12,
+			TextColor3 = Theme.Text,
+			Text = "YES",
+			AutoButtonColor = false,
+			ZIndex = 5300,
+		})
+		yes.Parent = fr
+		create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = yes})
+
+		local no = create("TextButton", {
+			BackgroundColor3 = Theme.SliderTrack,
+			BackgroundTransparency = 0.05,
+			BorderSizePixel = 0,
+			Size = UDim2.fromOffset(96, 26),
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 126, 1, -12),
+			Font = Enum.Font.GothamBold,
+			TextSize = 12,
+			TextColor3 = Theme.Text,
+			Text = "NO",
+			AutoButtonColor = false,
+			ZIndex = 5300,
+		})
+		no.Parent = fr
+		create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = no})
+
+		local decided = false
+		local function decide(v)
+			if decided then return end
+			decided = true
+			if type(cb) == "function" then
+				task.spawn(cb, v)
+			end
+			closeNow()
+		end
+
+		yes.MouseButton1Click:Connect(function() decide(true) end)
+		no.MouseButton1Click:Connect(function() decide(false) end)
+
+		task.delay(duration, function()
+			if decided then return end
+			decide(false)
+		end)
+	else
+		task.delay(duration, function()
+			if n.alive then
+				closeNow()
+			end
+		end)
+	end
+
+	-- anim in (entra da destra)
+	local endPos = UDim2.new(0, 0, 0, 0)
+	fr.Position = UDim2.new(0, 60, 0, 0)
+	tween(fr, TweenNotifIn, {Position = endPos})
+
+	return n
+end
+
+-- API
+function Window:Notify(opts)
+	if self._destroyed then return end
+	self:_createNotification(opts, false)
+end
+
+function Window:Prompt(opts, callback)
+	if self._destroyed then return end
+	self:_createNotification(opts, true, callback)
+end
+
+--============================================================
 -- DRAG MENU
 --============================================================
 
 function Window:_enableDragFromZone(rebindOnly)
-	-- se stiamo riusando GUI già esistente, evitiamo di creare connessioni doppie
 	if rebindOnly then
 		if self._connections._dragDown then safeDisconnect(self._connections._dragDown) end
 		if self._connections._dragUp then safeDisconnect(self._connections._dragUp) end
