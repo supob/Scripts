@@ -65,7 +65,7 @@ if not __remoteEnabled() then
 	return Dead
 end
 
-
+wait("1")
 
 local Library = {}
 Library.__index = Library
