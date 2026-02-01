@@ -1,4 +1,4 @@
--- Library.lua (ModuleScript)
+-- UI.lua (ModuleScript)
 -- GTA / FiveM style UI library (client) - FULL
 -- FIXED:
 --  - Drag: whole header area draggable
@@ -8,11 +8,12 @@
 -- THEME:
 --  - Purple / Dark Purple (clean + GTA-ish)
 -- HARDENED:
---  - server-safe stub
+--  - server-safe silent stub
 --  - LocalPlayer lazy
 --  - Random ScreenGui name + attribute tag
 --  - Anti-duplicate (reuse existing gui)
 --  - metatable locked (harder to patch)
+--  - integrity self-check (silent self-destruct if tampered)
 
 local Library = {}
 Library.__index = Library
@@ -32,7 +33,6 @@ local __TAG = "__UI_TAG_" .. __UID
 local __META_LOCK_NAME = "locked"
 
 local function __lockMeta(obj, methods)
-	-- locks metatable visibility while keeping behavior
 	return setmetatable(obj, {
 		__index = methods,
 		__metatable = __META_LOCK_NAME
@@ -40,7 +40,7 @@ local function __lockMeta(obj, methods)
 end
 
 --============================================================
--- SERVER SAFE STUB
+-- SERVER SAFE STUB (SILENT)
 --============================================================
 
 if RunService:IsServer() then
@@ -54,8 +54,6 @@ if RunService:IsServer() then
 	end
 
 	function Library:CreateWindow()
-		-- no "Library" string in output
-		warn("[UI] called on server: UI is client-only. No UI created.")
 		local w = setmetatable({}, StubWindow)
 		function w:IsVisible() return false end
 		function w:Show() end
@@ -186,7 +184,7 @@ function Library:CreateWindow(opts)
 
 	local lp = getLocalPlayer()
 	if not lp then
-		error("[UI] LocalPlayer not available (run on client, not too early).", 2)
+		error("client required", 2)
 	end
 
 	local window = __lockMeta({}, Window)
@@ -227,16 +225,118 @@ function Library:CreateWindow(opts)
 		maxAccel = 1.25,
 	}
 
+	-- expected method references (detect patching)
+	window.__expect = {
+		_renderSections = Window._renderSections,
+		_renderElements = Window._renderElements,
+		_applyHighlight = Window._applyHighlight,
+		_makeRow = Window._makeRow,
+		_transition = Window._transition,
+		_navSelect = Window._navSelect,
+		_startHoldLoop = Window._startHoldLoop,
+		_startSliderDragLoop = Window._startSliderDragLoop,
+		_updateSliderFromMouse = Window._updateSliderFromMouse,
+	}
+
 	window:_buildUI()
 	window:_attachToPlayerGui()
 	window:_bindInput()
 	window:_startHoldLoop()
 	window:_startSliderDragLoop()
 
+	-- start integrity self-check after everything exists
+	window:_startIntegrity()
+
 	window:Hide(true)
 
 	table.insert(self._windows, window)
 	return window
+end
+
+--============================================================
+-- INTEGRITY (SILENT SELF-DESTRUCT)
+--============================================================
+
+function Window:_trip()
+	if self._destroyed then return end
+	self._destroyed = true
+
+	for _, c in pairs(self._connections) do
+		safeDisconnect(c)
+	end
+
+	pcall(function()
+		if self._screenGui then
+			self._screenGui:Destroy()
+		end
+	end)
+end
+
+function Window:_integrityOk()
+	-- core UI nodes must exist & be parented
+	if not self._screenGui or not self._screenGui.Parent then return false end
+	if not self._root or not self._root.Parent then return false end
+	if not self._header or not self._header.Parent then return false end
+	if not self._content or not self._content.Parent then return false end
+	if not self._list or not self._list.Parent then return false end
+	if not self._layout or not self._layout.Parent then return false end
+	if not self._dragZone or not self._dragZone.Parent then return false end
+	if not self._titleLabel or not self._titleLabel.Parent then return false end
+	if not self._subtitleLabel or not self._subtitleLabel.Parent then return false end
+
+	-- tag must remain
+	if self._screenGui:GetAttribute(__TAG) ~= true then return false end
+
+	-- critical methods should not be replaced
+	local ex = self.__expect
+	if not ex then return false end
+	if Window._renderSections ~= ex._renderSections then return false end
+	if Window._renderElements ~= ex._renderElements then return false end
+	if Window._applyHighlight ~= ex._applyHighlight then return false end
+	if Window._makeRow ~= ex._makeRow then return false end
+	if Window._transition ~= ex._transition then return false end
+	if Window._navSelect ~= ex._navSelect then return false end
+	if Window._startHoldLoop ~= ex._startHoldLoop then return false end
+	if Window._startSliderDragLoop ~= ex._startSliderDragLoop then return false end
+	if Window._updateSliderFromMouse ~= ex._updateSliderFromMouse then return false end
+
+	return true
+end
+
+function Window:_startIntegrity()
+	if self._connections._integrityLoop then return end
+
+	-- immediate check once
+	if not self:_integrityOk() then
+		self:_trip()
+		return
+	end
+
+	-- if root or gui gets detached/destroyed
+	self._connections._rootAncestry = self._root.AncestryChanged:Connect(function()
+		if not self:_integrityOk() then
+			self:_trip()
+		end
+	end)
+
+	self._connections._guiAncestry = self._screenGui.AncestryChanged:Connect(function()
+		if not self:_integrityOk() then
+			self:_trip()
+		end
+	end)
+
+	-- lightweight periodic check (not every frame)
+	self.__intLast = 0
+	self._connections._integrityLoop = RunService.Heartbeat:Connect(function()
+		if self._destroyed then return end
+		local now = os.clock()
+		if (now - self.__intLast) < 1.35 then return end
+		self.__intLast = now
+
+		if not self:_integrityOk() then
+			self:_trip()
+		end
+	end)
 end
 
 --============================================================
@@ -294,6 +394,14 @@ function Window:_buildUI()
 					self._content = existingRoot:FindFirstChild("Content", true)
 					self._list = existingRoot:FindFirstChild("List", true)
 					self._layout = self._list and self._list:FindFirstChildOfClass("UIListLayout") or nil
+					self._dragZone = self._header and self._header:FindFirstChild("DragZone", true) or nil
+					self._titleLabel = self._header and self._header:FindFirstChild("Title", true) or nil
+					self._subtitleLabel = self._header and self._header:FindFirstChild("Subtitle", true) or nil
+
+					-- ensure drag & integrity still attached
+					if self._dragZone then
+						self:_enableDragFromZone()
+					end
 					return
 				end
 			end
@@ -484,8 +592,13 @@ function Window:_enableDragFromZone()
 	local dragging = false
 	local dragStart, startPos
 
+	-- prevent duplicate connections if called again
+	safeDisconnect(self._connections._dragDown)
+	safeDisconnect(self._connections._dragUp)
+	safeDisconnect(self._connections._dragMove)
+
 	self._connections._dragDown = self._dragZone.MouseButton1Down:Connect(function()
-		if not self._root.Visible then return end
+		if self._destroyed or not self._root or not self._root.Visible then return end
 		dragging = true
 		dragStart = UserInputService:GetMouseLocation()
 		startPos = self._root.Position
@@ -499,6 +612,7 @@ function Window:_enableDragFromZone()
 
 	self._connections._dragMove = UserInputService.InputChanged:Connect(function(input)
 		if not dragging then return end
+		if self._destroyed then return end
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
 			local pos = UserInputService:GetMouseLocation()
 			local delta = pos - dragStart
@@ -1192,6 +1306,11 @@ end
 
 function Window:Show(instant)
 	if self._destroyed then return end
+	if not self:_integrityOk() then
+		self:_trip()
+		return
+	end
+
 	self:_attachToPlayerGui()
 
 	self._root.Visible = true
@@ -1230,7 +1349,7 @@ function Window:Show(instant)
 end
 
 function Window:Hide(instant)
-	if self._destroyed or not self._root.Visible then return end
+	if self._destroyed or not (self._root and self._root.Visible) then return end
 	self._hold.up, self._hold.down, self._hold.left, self._hold.right = false, false, false, false
 	self._activeSliderDrag = nil
 
@@ -1252,7 +1371,9 @@ function Window:Hide(instant)
 
 	task.delay(TweenSlow.Time, function()
 		if self._destroyed then return end
-		self._root.Visible = false
+		if self._root then
+			self._root.Visible = false
+		end
 	end)
 end
 
@@ -1271,13 +1392,16 @@ function Window:SetKeybind(keyCode)
 end
 
 function Window:Destroy()
-	if self._destroyed then return end
-	self._destroyed = true
-	for _, c in pairs(self._connections) do safeDisconnect(c) end
-	if self._screenGui then self._screenGui:Destroy() end
+	self:_trip()
 end
 
 function Window:AddSection(name)
+	if self._destroyed then return nil end
+	if not self:_integrityOk() then
+		self:_trip()
+		return nil
+	end
+
 	assert(type(name) == "string" and #name > 0, "Section name must be a string")
 	if self._sectionByName[name] then
 		return self._sectionByName[name]
