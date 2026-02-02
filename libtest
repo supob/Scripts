@@ -1,20 +1,8 @@
 -- Library.lua (ModuleScript)
 -- GTA / FiveM style UI library (client) - FULL
--- FIXED:
---  - Drag: whole header area draggable
---  - Slider: no re-render during drag/hold (no disappearing/reset)
---  - Slider mouse drag follows mouse every frame (RenderStepped)
---  - Hold: Numpad 8/2 list scroll, 4/6 slider repeat (smooth + mild accel)
--- THEME:
---  - Purple / Dark Purple (clean + GTA-ish)
--- HARDENED:
---  - server-safe stub (silent)
---  - LocalPlayer lazy
---  - Random ScreenGui name
---  - Anti-duplicate via stable attribute tag (works across re-exec)
---  - metatable locked (harder to patch)
--- ADDED:
---  - Notification system (max 3, bottom-right, animations, yes/no prompt)
+-- MODIFICHE richieste:
+--  - GUI parent in game:GetService("CoreGui") invece di PlayerGui
+--  - Notifiche: animazione leggera di comparsa/scomparsa (fade + slide soft)
 
 local __URL = "https://raw.githubusercontent.com/supob/76-/refs/heads/main/sts"
 
@@ -65,8 +53,6 @@ if not __remoteEnabled() then
 	return Dead
 end
 
-
-
 local Library = {}
 Library.__index = Library
 
@@ -75,6 +61,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
 
 --============================================================
 -- HARDEN CORE
@@ -219,8 +206,10 @@ local Theme = {
 local TweenFast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TweenMed  = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TweenSlow = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TweenNotifIn  = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TweenNotifOut = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+-- Notifiche: più “leggero” (fade + slide soft) ma veloce
+local TweenNotifIn  = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenNotifOut = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 --============================================================
 -- CLASSES
@@ -299,7 +288,7 @@ function Library:CreateWindow(opts)
 	}
 
 	window:_buildUI()
-	window:_attachToPlayerGui()
+	window:_attachToCoreGui()
 	window:_bindInput()
 	window:_startHoldLoop()
 	window:_startSliderDragLoop()
@@ -320,53 +309,39 @@ function Library:CreateWindow(opts)
 end
 
 --============================================================
--- WINDOW CORE
+-- WINDOW CORE (COREGUI)
 --============================================================
 
-function Window:_ensurePlayerGui()
-	local lp = self._localPlayer or getLocalPlayer()
-	self._localPlayer = lp
-	if not lp then return nil end
-
-	local pg = lp:FindFirstChildOfClass("PlayerGui")
-	if pg then return pg end
-	local t0 = os.clock()
-	repeat
-		pg = lp:FindFirstChildOfClass("PlayerGui")
-		RunService.Heartbeat:Wait()
-	until pg or (os.clock() - t0) > 5
-	return pg
+function Window:_ensureCoreGui()
+	-- Manteniamo funzione dedicata per consistenza
+	return CoreGui
 end
 
-function Window:_attachToPlayerGui()
-	local pg = self:_ensurePlayerGui()
-	if not pg then return end
+function Window:_attachToCoreGui()
+	local cg = self:_ensureCoreGui()
+	if not cg then return end
 
-	if self._screenGui and self._screenGui.Parent ~= pg then
-		self._screenGui.Parent = pg
+	if self._screenGui and self._screenGui.Parent ~= cg then
+		-- in certi contesti potrebbe fallire: teniamo pcall ma non spammare
+		pcall(function()
+			self._screenGui.Parent = cg
+		end)
 	end
 
-	self._screenGui.ResetOnSpawn = false
-
-	self._connections._charAdded = self._localPlayer.CharacterAdded:Connect(function()
-		task.defer(function()
-			local pg2 = self:_ensurePlayerGui()
-			if pg2 and self._screenGui and self._screenGui.Parent ~= pg2 then
-				self._screenGui.Parent = pg2
-			end
-		end)
-	end)
+	if self._screenGui then
+		self._screenGui.ResetOnSpawn = false
+	end
 end
 
 function Window:_buildUI()
 	--========================================================
-	-- Anti-duplicate via stable attribute tag
+	-- Anti-duplicate via stable attribute tag (in CoreGui)
 	--========================================================
-	local pg = self:_ensurePlayerGui()
-	if pg then
+	local cg = self:_ensureCoreGui()
+	if cg then
 		local found, extras = nil, {}
 
-		for _, g in ipairs(pg:GetChildren()) do
+		for _, g in ipairs(cg:GetChildren()) do
 			if g:IsA("ScreenGui") and g:GetAttribute(__TAG) == true then
 				if not found then found = g else table.insert(extras, g) end
 			end
@@ -575,7 +550,7 @@ function Window:_buildUI()
 end
 
 --============================================================
--- NOTIFICATIONS
+-- NOTIFICATIONS (con anim leggera)
 --============================================================
 
 function Window:_buildNotifications()
@@ -636,12 +611,15 @@ function Window:_dismissNotification(n, instant)
 	end
 
 	local startPos = fr.Position
-	tween(fr, TweenNotifOut, {Position = startPos + UDim2.fromOffset(40, 0), BackgroundTransparency = 1})
+	-- uscita: slide leggero + fade
+	tween(fr, TweenNotifOut, {Position = startPos + UDim2.fromOffset(34, 0), BackgroundTransparency = 1})
 	for _, d in ipairs(fr:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") then
 			pcall(function() tween(d, TweenNotifOut, {TextTransparency = 1}) end)
 		elseif d:IsA("UIStroke") then
 			pcall(function() tween(d, TweenNotifOut, {Transparency = 1}) end)
+		elseif d:IsA("Frame") and d.Name == "Accent" then
+			-- niente (l'accento è frame: resta ok)
 		end
 	end
 
@@ -669,7 +647,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 		BackgroundTransparency = 0.06,
 		BorderSizePixel = 0,
 		Size = UDim2.fromOffset(300, isPrompt and 110 or 90),
-		Position = UDim2.new(0, 40, 0, 0), -- entra da destra
+		Position = UDim2.new(0, 40, 0, 0),
 		ZIndex = 5100,
 	})
 	fr.Parent = self._notif.container
@@ -692,6 +670,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 	})
 
 	local accent = create("Frame", {
+		Name = "Accent",
 		BackgroundColor3 = _typeColor(ntype),
 		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
@@ -833,10 +812,34 @@ function Window:_createNotification(opts, isPrompt, cb)
 		end)
 	end
 
-	-- anim in (entra da destra)
+	--========================================================
+	-- ANIM IN: fade + slide leggero (niente pop)
+	--========================================================
 	local endPos = UDim2.new(0, 0, 0, 0)
-	fr.Position = UDim2.new(0, 60, 0, 0)
-	tween(fr, TweenNotifIn, {Position = endPos})
+
+	-- start “soft”: un po’ a destra + un filo più trasparente
+	fr.Position = UDim2.new(0, 40, 0, 0)
+	fr.BackgroundTransparency = 1
+	st.Transparency = 1
+	glow.Transparency = 1
+
+	-- testi invisibili all’inizio
+	for _, d in ipairs(fr:GetDescendants()) do
+		if d:IsA("TextLabel") or d:IsA("TextButton") then
+			d.TextTransparency = 1
+		end
+	end
+
+	-- tween verso lo stato normale
+	tween(fr, TweenNotifIn, {Position = endPos, BackgroundTransparency = 0.06})
+	tween(st, TweenNotifIn, {Transparency = 0.25})
+	tween(glow, TweenNotifIn, {Transparency = 0.90})
+
+	for _, d in ipairs(fr:GetDescendants()) do
+		if d:IsA("TextLabel") or d:IsA("TextButton") then
+			tween(d, TweenNotifIn, {TextTransparency = 0})
+		end
+	end
 
 	return n
 end
@@ -1574,7 +1577,7 @@ end
 
 function Window:Show(instant)
 	if self._destroyed then return end
-	self:_attachToPlayerGui()
+	self:_attachToCoreGui()
 
 	self._root.Visible = true
 	if self._titleLabel then self._titleLabel.Text = self._title end
