@@ -1144,7 +1144,7 @@ function Window:_makeRow(order, isHeader)
 	local title = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -110, 1, 0),
-		Position = UDim2.fromOffset(14, -4),
+		Position = UDim2.fromOffset(14, -6),
 		Font = Enum.Font.Gotham,
 		TextSize = isHeader and 12 or 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -1307,7 +1307,7 @@ function Window:_renderElements(section)
 			local wrap = create("Frame", {
 				BackgroundTransparency = 1,
 				Size = UDim2.new(1, -150, 0, 8),
-				Position = UDim2.new(0, 12, 1, -16),
+				Position = UDim2.new(0, 12, 1, -14),
 				ZIndex = 10,
 			})
 			wrap.Parent = row
