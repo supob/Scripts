@@ -1307,7 +1307,7 @@ function Window:_renderElements(section)
 			local wrap = create("Frame", {
 				BackgroundTransparency = 1,
 				Size = UDim2.new(1, -150, 0, 8),
-				Position = UDim2.new(0, 12, 1, -12),
+				Position = UDim2.new(0, 12, 1, -8),
 				ZIndex = 10,
 			})
 			wrap.Parent = row
