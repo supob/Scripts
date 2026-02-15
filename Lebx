@@ -312,6 +312,27 @@ Library.Create = function(_, LibraryOptions)
 		ClipsDescendants = true
 	})
 
+    local SubTabsHeader = self:Object("Frame", {
+    Name = "SubTabsHeader",
+    Parent = OptionsContainer,
+    Size = UDim2.new(1, 0, 0, 35), -- Barra alta 35 pixel
+    BackgroundColor3 = Theme.Main, -- Stesso colore del fondo
+    BorderSizePixel = 0,
+    Visible = false -- Si vede solo quando un Tab è selezionato
+})
+
+local SubLayout = self:Object("UIListLayout", {
+    Parent = SubTabsHeader,
+    FillDirection = Enum.FillDirection.Horizontal,
+    Padding = UDim.new(0, 15), -- Spazio tra i nomi delle sezioni
+    VerticalAlignment = Enum.VerticalAlignment.Center
+})
+
+self:Object("UIPadding", {
+    Parent = SubTabsHeader,
+    PaddingLeft = UDim.new(0, 15)
+})
+
 	self:Object("Frame", {
 		Parent = OptionsContainer,
 		Size = UDim2.new(0, 4, 1, 0),
@@ -538,35 +559,135 @@ Library.Create = function(_, LibraryOptions)
 			end
 		end)
 
+-- Crea la barra orizzontale in alto per le sottosezioni (stile GTA 5)
+		local SubHeader = self:Object("Frame", {
+			Name = "SubHeader",
+			Parent = OptionsContainer, -- Va dentro il contenitore di destra
+			Size = UDim2.new(1, 0, 0, 35),
+			BackgroundColor3 = Theme.Main,
+			Visible = Initial, -- Visibile solo se è il primo tab
+			BorderSizePixel = 0,
+			ZIndex = 5
+		})
+
+		local SubLayout = self:Object("UIListLayout", {
+			Parent = SubHeader,
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 15),
+			VerticalAlignment = Enum.VerticalAlignment.Center
+		})
+
+		self:Object("UIPadding", {
+			Parent = SubHeader,
+			PaddingLeft = UDim.new(0, 15)
+		})
+
+		-- Modifica del Click del Tab Principale (Sinistra)
 		Tab.MouseButton1Click:connect(function()
+			-- Nascondi tutti i vecchi contenuti e SubHeader
 			for i, v in next, OptionsContainerClips:GetChildren() do
-				if v.Name == "Tab" then
-					v.Visible = false
-				end
+				v.Visible = false
 			end
+			for i, v in next, OptionsContainer:GetChildren() do
+				if v.Name == "SubHeader" then v.Visible = false end
+			end
+
+			-- Reset colori tab sinistra
 			for i, v in next, Tabs:GetChildren() do
-				if v.Name == "Tab" and v ~= Tab then
+				if v:IsA("TextButton") and v.Name == "Tab" then
 					TS:Create(v.NameLabel, TI(0.1), {TextColor3 = Theme.TabDefault}):Play()
 				end
 			end
+
+			-- Attiva questo Tab e il suo SubHeader
 			TS:Create(Label, TI(0.1), {TextColor3 = Theme.TabSelected}):Play()
 			self.Selected = Tab
-			FunctionsContainer.Visible = true
+			SubHeader.Visible = true
+			
+			-- Mostra automaticamente la prima sottosezione di questo tab
+			local firstPage = FunctionsContainer -- O la prima sottosezione creata
+			if firstPage then firstPage.Visible = true end
 		end)
 
+		-- Funzione per creare le Sottosezioni (SubTabs)
+		local SubTabLibrary = {}
+
+		SubTabLibrary.NewSubSection = function(_, SubName)
+			-- Bottone in alto
+			local SubBtn = self:Object("TextButton", {
+				Parent = SubHeader,
+				BackgroundTransparency = 1,
+				Text = SubName:upper(),
+				Font = Enum.Font.SourceSansBold,
+				TextSize = 14,
+				TextColor3 = Theme.TabDefault,
+				Size = UDim2.new(0, 0, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.X
+			})
+
+			-- Linea di Highlight sotto il nome (GTA Style)
+			local Highlight = self:Object("Frame", {
+				Parent = SubBtn,
+				Size = UDim2.new(1, 0, 0, 2),
+				Position = UDim2.new(0, 0, 1, -2),
+				BackgroundColor3 = Theme.TabSelected,
+				Visible = false,
+				BorderSizePixel = 0
+			})
+
+			-- Container dei bottoni per questa specifica sottosezione
+			local SubPage = self:Object("ScrollingFrame", {
+				Name = "SubPage",
+				Parent = OptionsContainerClips,
+				Size = UDim2.new(1, -200, 1, -35),
+				Position = UDim2.new(0,0,0,35),
+				Visible = false,
+				BackgroundTransparency = 1,
+				CanvasSize = UDim2.new(0,0,0,0),
+				ScrollBarThickness = 2
+			})
+			
+			self:Object("UIListLayout", {Parent = SubPage, HorizontalAlignment = "Center", Padding = UDim.new(0,6)})
+
+			SubBtn.MouseButton1Click:Connect(function()
+				-- Nascondi altre pagine del tab e togli highlight
+				for _, v in next, SubHeader:GetChildren() do
+					if v:IsA("TextButton") then 
+						v.TextColor3 = Theme.TabDefault
+						if v:FindFirstChild("Frame") then v.Frame.Visible = false end
+					end
+				end
+				for _, v in next, OptionsContainerClips:GetChildren() do
+					v.Visible = false
+				end
+				
+				-- Attiva questa
+				SubBtn.TextColor3 = Theme.TabSelected
+				Highlight.Visible = true
+				SubPage.Visible = true
+			end)
+
+			-- Ritorna la vecchia DividerLibrary collegata a 'SubPage'
+			return DividerLibrary -- (Assicurati che DividerLibrary usi SubPage come parent)
+		end
+
+		return SubTabLibrary
 		local TabRefresh = function()
 			FunctionsContainer.CanvasSize = UDim2.new(0, 0, 0, FunctionsLayout.AbsoluteContentSize.Y + 20)
 		end
 
-		local DividerLibrary = {}
+local DividerLibrary = {}
 
-		DividerLibrary.Divider = function(_, DividerOptions)
+		-- Passiamo 'SubPage' come argomento così il Divider sa dove spawnare
+		DividerLibrary.Divider = function(_, DividerOptions, TargetPage)
 			DividerOptions = DividerOptions or {}
 			DividerOptions.Name = DividerOptions.Name or ""
+			-- Se non passiamo TargetPage, usa il default (SubPage definita sopra)
+			local ParentFrame = TargetPage or SubPage 
 
 			local Divider = self:Object("Frame", {
 				Name = "Divider",
-				Parent = FunctionsContainer,
+				Parent = ParentFrame, -- MODIFICATO: ora punta alla SubPage corretta
 				BackgroundColor3 = Theme.DividerBackground,
 				Size = UDim2.new(1, -20, 0, 0)
 			})
@@ -598,9 +719,11 @@ Library.Create = function(_, LibraryOptions)
 				PaddingTop = UDim.new(0, 5)
 			})
 
+			-- Funzione di refresh per aggiornare la grandezza dello scrolling
 			local DividerRefresh = function()
 				Divider.Size = UDim2.new(1, -20, 0, DividerLayout.AbsoluteContentSize.Y + 10)
-				TabRefresh()
+				-- MODIFICATO: aggiorna il canvas della pagina corrente
+				ParentFrame.CanvasSize = UDim2.new(0, 0, 0, ParentFrame.UIListLayout.AbsoluteContentSize.Y + 20)
 			end
 
 			local AddDescriptionTweens = function(Button, Description)
