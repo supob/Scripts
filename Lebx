@@ -610,10 +610,13 @@ self:Object("UIPadding", {
 		end)
 
 		-- Funzione per creare le Sottosezioni (SubTabs)
+-- [Sostituisci da qui fino alla fine del tuo script]
+		
+		-- Funzione per creare le Sottosezioni (SubTabs)
 		local SubTabLibrary = {}
 
 		SubTabLibrary.NewSubSection = function(_, SubName)
-			-- Bottone in alto
+			-- Bottone orizzontale in alto
 			local SubBtn = self:Object("TextButton", {
 				Parent = SubHeader,
 				BackgroundTransparency = 1,
@@ -625,7 +628,6 @@ self:Object("UIPadding", {
 				AutomaticSize = Enum.AutomaticSize.X
 			})
 
-			-- Linea di Highlight sotto il nome (GTA Style)
 			local Highlight = self:Object("Frame", {
 				Parent = SubBtn,
 				Size = UDim2.new(1, 0, 0, 2),
@@ -635,22 +637,27 @@ self:Object("UIPadding", {
 				BorderSizePixel = 0
 			})
 
-			-- Container dei bottoni per questa specifica sottosezione
+			-- Pagina specifica per questa sottosezione
 			local SubPage = self:Object("ScrollingFrame", {
 				Name = "SubPage",
 				Parent = OptionsContainerClips,
-				Size = UDim2.new(1, -200, 1, -35),
-				Position = UDim2.new(0,0,0,35),
+				Size = UDim2.new(1, -20, 1, -40),
+				Position = UDim2.new(0, 10, 0, 40),
 				Visible = false,
 				BackgroundTransparency = 1,
-				CanvasSize = UDim2.new(0,0,0,0),
-				ScrollBarThickness = 2
+				CanvasSize = UDim2.new(0, 0, 0, 0),
+				ScrollBarThickness = 2,
+				ScrollBarImageColor3 = Theme.ScrollBar
 			})
 			
-			self:Object("UIListLayout", {Parent = SubPage, HorizontalAlignment = "Center", Padding = UDim.new(0,6)})
+			local SubPageLayout = self:Object("UIListLayout", {
+				Parent = SubPage, 
+				HorizontalAlignment = "Center", 
+				Padding = UDim.new(0, 6)
+			})
 
 			SubBtn.MouseButton1Click:Connect(function()
-				-- Nascondi altre pagine del tab e togli highlight
+				-- Reset altri bottoni e pagine
 				for _, v in next, SubHeader:GetChildren() do
 					if v:IsA("TextButton") then 
 						v.TextColor3 = Theme.TabDefault
@@ -661,20 +668,37 @@ self:Object("UIPadding", {
 					v.Visible = false
 				end
 				
-				-- Attiva questa
+				-- Attiva corrente
 				SubBtn.TextColor3 = Theme.TabSelected
 				Highlight.Visible = true
 				SubPage.Visible = true
 			end)
 
-			-- Ritorna la vecchia DividerLibrary collegata a 'SubPage'
-			return DividerLibrary -- (Assicurati che DividerLibrary usi SubPage come parent)
+			-- Se è la prima sottosezione, rendila visibile
+			if #SubHeader:GetChildren() <= 4 then -- 4 include Layout e Padding
+				SubBtn.TextColor3 = Theme.TabSelected
+				Highlight.Visible = true
+				SubPage.Visible = true
+			end
+
+			-- Questa riga collega i Divider a QUESTA SubPage
+			local FinalDividerLibrary = {}
+			
+			FinalDividerLibrary.Divider = function(_, DivOptions)
+				-- Qui inserisci tutta la logica DividerLibrary.Divider che hai
+				-- MA usa 'SubPage' come Parent del Divider.
+				-- (Il codice del divider che hai postato sopra va qui dentro)
+				return OptionLibrary -- Che contiene Button, Toggle, etc.
+			end
+			
+			return FinalDividerLibrary
 		end
 
 		return SubTabLibrary
-		local TabRefresh = function()
-			FunctionsContainer.CanvasSize = UDim2.new(0, 0, 0, FunctionsLayout.AbsoluteContentSize.Y + 20)
-		end
+	end -- Fine TabsLibrary.Tab
+
+	return TabsLibrary -- RISOLVE L'ERRORE 'TAB' MISSING
+end -- Fine Library.Create
 
 local DividerLibrary = {}
 
