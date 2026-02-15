@@ -1,1821 +1,1795 @@
--- Source code here!
-
-local Library = {Count = 0, Tab = nil}
-
-
-
-local Themes = {
-
-Light = {
-
-Main = Color3.fromRGB(190, 190, 190),
-
-TabsBackground = Color3.fromRGB(54, 57, 63),
-
-ScrollBar = Color3.fromRGB(50, 50, 50),
-
-QuitText = Color3.fromRGB(220, 220, 220),
-
-
-
-TabDefault = Color3.fromRGB(150, 150, 160),
-
-TabHovered = Color3.fromRGB(50, 150, 170),
-
-TabSelected = Color3.fromRGB(45, 190, 220),
-
-
-
-DividerBackground = Color3.fromRGB(210, 210, 210),
-
-DividerText = Color3.fromRGB(50, 50, 50),
-
-
-
-OptionBackground = Color3.fromRGB(255, 255, 255),
-
-OptionHover = Color3.fromRGB(240, 240, 240),
-
-OptionClick = Color3.fromRGB(225, 225, 225),
-
-OptionText = Color3.fromRGB(50, 50, 50),
-
-OptionDescription = Color3.fromRGB(100, 100, 100),
-
-OptionImage = Color3.fromRGB(50, 50, 50),
-
-
-
-ToggleTrue = Color3.fromRGB(125, 230, 155),
-
-ToggleFalse = Color3.fromRGB(205, 95, 95),
-
-ToggleIndicator = Color3.fromRGB(50, 50, 50),
-
-
-
-DropdownOptionsBackground = Color3.fromRGB(255, 255, 255),
-
-DropdownScrollbar = Color3.fromRGB(200, 200, 200),
-
-DropdownOption = Color3.fromRGB(255, 255, 255),
-
-DropdownText = Color3.fromRGB(50, 50, 50),
-
-DropdownOptionHover = Color3.fromRGB(240, 240, 240),
-
-DropdownOptionClick = Color3.fromRGB(225, 225, 225),
-
-
-
-ColourPickerBackground = Color3.fromRGB(255, 255, 255),
-
-
-
-BoxOutline = Color3.fromRGB(150, 150, 150),
-
-BoxHover = Color3.fromRGB(100, 100, 100),
-
-BoxClick = Color3.fromRGB(50, 50, 50),
-
-BoxPlaceholder = Color3.fromRGB(225, 225, 225)
-
-},
-
-Red = {
-
-Main = Color3.fromRGB(130, 30, 30),
-
-TabsBackground = Color3.fromRGB(122, 22, 22),
-
-ScrollBar = Color3.fromRGB(250, 150, 150),
-
-QuitText = Color3.fromRGB(240, 225, 225),
-
-
-
-TabDefault = Color3.fromRGB(225, 125, 125),
-
-TabHovered = Color3.fromRGB(240, 190, 190),
-
-TabSelected = Color3.fromRGB(355, 255, 255),
-
-
-
-DividerBackground = Color3.fromRGB(140, 40, 40),
-
-DividerText = Color3.fromRGB(255, 255, 255),
-
-
-
-OptionBackground = Color3.fromRGB(150, 50, 50),
-
-OptionHover = Color3.fromRGB(165, 65, 65),
-
-OptionClick = Color3.fromRGB(180, 80, 80),
-
-OptionText = Color3.fromRGB(255, 255, 255),
-
-OptionDescription = Color3.fromRGB(245, 205, 205),
-
-OptionImage = Color3.fromRGB(255, 255, 255),
-
-
-
-ToggleTrue = Color3.fromRGB(225, 230, 155),
-
-ToggleFalse = Color3.fromRGB(195, 95, 95),
-
-ToggleIndicator = Color3.fromRGB(255, 255, 255),
-
-
-
-DropdownOptionsBackground = Color3.fromRGB(150, 50, 50),
-
-DropdownScrollbar = Color3.fromRGB(130, 30, 30),
-
-DropdownOption = Color3.fromRGB(150, 50, 50),
-
-DropdownText = Color3.fromRGB(255, 255, 255),
-
-DropdownOptionHover = Color3.fromRGB(165, 65, 65),
-
-DropdownOptionClick = Color3.fromRGB(180, 80, 80),
-
-
-
-ColourPickerBackground = Color3.fromRGB(150, 50, 50),
-
-
-
-BoxOutline = Color3.fromRGB(225, 125, 125),
-
-BoxHover = Color3.fromRGB(235, 175, 175),
-
-BoxClick = Color3.fromRGB(245, 225, 225),
-
-BoxPlaceholder = Color3.fromRGB(245, 225, 225)
-
-},
-
-Discord = {
-
-Main = Color3.fromRGB(54, 57, 63),
-
-TabsBackground = Color3.fromRGB(47, 49, 54),
-
-ScrollBar = Color3.fromRGB(54, 57, 63),
-
-QuitText = Color3.fromRGB(225, 225, 225),
-
-
-
-TabDefault = Color3.fromRGB(125, 125, 125),
-
-TabHovered = Color3.fromRGB(190, 190, 190),
-
-TabSelected = Color3.fromRGB(255, 255, 255),
-
-
-
-DividerBackground = Color3.fromRGB(64, 67, 73),
-
-DividerText = Color3.fromRGB(255, 255, 255),
-
-
-
-OptionBackground = Color3.fromRGB(88, 101, 242),
-
-OptionHover = Color3.fromRGB(71, 82, 196),
-
-OptionClick = Color3.fromRGB(75, 86, 203),
-
-OptionText = Color3.fromRGB(255, 255, 255),
-
-OptionDescription = Color3.fromRGB(205, 205, 205),
-
-OptionImage = Color3.fromRGB(255, 255, 255),
-
-
-
-ToggleTrue = Color3.fromRGB(22, 168, 76),
-
-ToggleFalse = Color3.fromRGB(47, 49, 54),
-
-ToggleIndicator = Color3.fromRGB(255, 255, 255),
-
-
-
-DropdownOptionsBackground = Color3.fromRGB(47,49,54),
-
-DropdownScrollbar = Color3.fromRGB(54, 57, 63),
-
-DropdownOption = Color3.fromRGB(88, 101, 242),
-
-DropdownText = Color3.fromRGB(255, 255, 255),
-
-DropdownOptionHover = Color3.fromRGB(71, 82, 196),
-
-DropdownOptionClick = Color3.fromRGB(75, 86, 203),
-
-
-
-ColourPickerBackground = Color3.fromRGB(47, 49, 54),
-
-
-
-BoxOutline = Color3.fromRGB(225, 225, 225),
-
-BoxHover = Color3.fromRGB(175, 175, 175),
-
-BoxClick = Color3.fromRGB(225, 225, 225),
-
-BoxPlaceholder = Color3.fromRGB(225, 225, 225)
-
-},
-
-Dark = {
-
-Main = Color3.fromRGB(30, 30, 30),
-
-TabsBackground = Color3.fromRGB(22, 22, 22),
-
-ScrollBar = Color3.fromRGB(150, 150, 150),
-
-QuitText = Color3.fromRGB(225, 225, 225),
-
-
-
-TabDefault = Color3.fromRGB(125, 125, 125),
-
-TabHovered = Color3.fromRGB(190, 190, 190),
-
-TabSelected = Color3.fromRGB(255, 255, 255),
-
-
-
-DividerBackground = Color3.fromRGB(40, 40, 40),
-
-DividerText = Color3.fromRGB(255, 255, 255),
-
-
-
-OptionBackground = Color3.fromRGB(50, 50, 50),
-
-OptionHover = Color3.fromRGB(65, 65, 65),
-
-OptionClick = Color3.fromRGB(80, 80, 80),
-
-OptionText = Color3.fromRGB(255, 255, 255),
-
-OptionDescription = Color3.fromRGB(205, 205, 205),
-
-OptionImage = Color3.fromRGB(255, 255, 255),
-
-
-
-ToggleTrue = Color3.fromRGB(125, 230, 155),
-
-ToggleFalse = Color3.fromRGB(205, 95, 95),
-
-ToggleIndicator = Color3.fromRGB(255, 255, 255),
-
-
-
-DropdownOptionsBackground = Color3.fromRGB(50, 50, 50),
-
-DropdownScrollbar = Color3.fromRGB(30, 30, 30),
-
-DropdownOption = Color3.fromRGB(50, 50, 50),
-
-DropdownText = Color3.fromRGB(255, 255, 255),
-
-DropdownOptionHover = Color3.fromRGB(65, 65, 65),
-
-DropdownOptionClick = Color3.fromRGB(80, 80, 80),
-
-
-
-ColourPickerBackground = Color3.fromRGB(50, 50, 50),
-
-
-
-BoxOutline = Color3.fromRGB(125, 125, 125),
-
-BoxHover = Color3.fromRGB(175, 175, 175),
-
-BoxClick = Color3.fromRGB(225, 225, 225),
-
-BoxPlaceholder = Color3.fromRGB(225, 225, 225)
-
+-- SERVER SAFE STUB (silent)
+--============================================================
+if RunService:IsServer() then
+    local StubWindow = {}
+    StubWindow.__index = StubWindow
+
+    local StubSection = {}
+    StubSection.__index = StubSection
+
+    function Library.new()
+        return setmetatable({_windows = {}}, Library)
+    end
+
+    function Library:CreateWindow()
+        local w = setmetatable({}, StubWindow)
+
+        function w:IsVisible() return false end
+        function w:Show() end
+        function w:Hide() end
+        function w:Toggle() end
+        function w:SetKeybind() end
+        function w:Destroy() end
+
+        function w:AddSection()
+            local s = setmetatable({}, StubSection)
+
+            function s:AddLabel() end
+            function s:AddButton(_, cb) if type(cb) == "function" then end end
+            function s:AddToggle(_, _, cb) if type(cb) == "function" then end end
+            function s:AddSlider(_, _, _, _, _, cb) if type(cb) == "function" then end end
+            function s:AddDropdown(_, _, _, cb) if type(cb) == "function" then end end
+
+            return s
+        end
+
+        w.AddTab = w.AddSection
+
+        function w:Notify() end
+        function w:Prompt(_, cb)
+            if type(cb) == "function" then cb(false) end
+        end
+
+        return w
+    end
+
+    return Library
+end
+
+--============================================================
+-- LocalPlayer lazy (CLIENT)
+--============================================================
+local function getLocalPlayer()
+    local lp = Players.LocalPlayer
+    if lp then return lp end
+    pcall(function()
+        Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    end)
+    return Players.LocalPlayer
+end
+
+--============================================================
+-- UTILS
+--============================================================
+local function clamp(n, a, b)
+    if n < a then return a end
+    if n > b then return b end
+    return n
+end
+
+local function roundToStep(v, step)
+    if step <= 0 then return v end
+    return math.floor((v / step) + 0.5) * step
+end
+
+local function safeDisconnect(conn)
+    if conn and typeof(conn) == "RBXScriptConnection" then
+        conn:Disconnect()
+    end
+end
+
+local function create(className, props)
+    local inst = Instance.new(className)
+    for k, val in pairs(props or {}) do
+        inst[k] = val
+    end
+    return inst
+end
+
+local function tween(inst, info, props)
+    local t = TweenService:Create(inst, info, props)
+    t:Play()
+    return t
+end
+
+--============================================================
+-- THEME (PURPLE)
+--============================================================
+local Theme = {
+    PanelBg = Color3.fromRGB(16, 10, 24),
+    PanelBgTransparency = 0.18,
+    Text = Color3.fromRGB(242, 242, 245),
+    MutedText = Color3.fromRGB(190, 185, 200),
+    Stroke = Color3.fromRGB(110, 80, 155),
+    StrokeTransparency = 0.22,
+    Glow = Color3.fromRGB(170, 120, 255),
+    GlowTransparency = 0.90,
+    HighlightBg = Color3.fromRGB(200, 160, 255),
+    HighlightTransparency = 0.90,
+    HighlightBar = Color3.fromRGB(205, 170, 255),
+    Accent = Color3.fromRGB(170, 120, 255),
+    SliderTrack = Color3.fromRGB(40, 28, 58),
+    SliderFill = Color3.fromRGB(200, 160, 255),
+    -- Notifiche
+    NotifBg = Color3.fromRGB(18, 12, 28),
+    NotifStroke = Color3.fromRGB(120, 85, 175),
+    NotifShadow = Color3.fromRGB(170, 120, 255),
+    Info = Color3.fromRGB(200, 160, 255),
+    Success = Color3.fromRGB(150, 255, 200),
+    Warning = Color3.fromRGB(255, 215, 130),
+    Error = Color3.fromRGB(255, 140, 140),
 }
 
-}
+local TweenFast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenMed = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenSlow = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
+local TweenNotifIn = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenNotifOut = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
+--============================================================
+-- CLASSES
+--============================================================
+local Window = {}   Window.__index = Window
+local Section = {}  Section.__index = Section
+local Element = {}  Element.__index = Element
 
-local Objects = {
-
-Shadow = {
-
-Type = "ImageLabel",
-
-Name = "Shadow",
-
-AnchorPoint = Vector2.new(0.5, 0.5),
-
-BackgroundTransparency = 1,
-
-Position = UDim2.new(0.5, 0, 0.5, 0),
-
-Size = UDim2.new(1, 12, 1, 12),
-
-ImageTransparency = 0.5,
-
-Image = "rbxassetid://1316045217",
-
-ImageColor3 = Color3.fromRGB(22, 22, 22),
-
-ScaleType = Enum.ScaleType.Slice,
-
-SliceCenter = Rect.new(10, 10, 118, 118),
-
-},
-
-Round = {
-
-Type = "UICorner",
-
-Name = "Rounding",
-
-CornerRadius = UDim.new(0, 4)
-
-},
-
-MainOptionFrame = {
-
-Type = "TextButton",
-
-Name = "Button",
-
-Size = UDim2.new(1, -10, 0, 30),
-
-Text = "",
-
-AutoButtonColor = false
-
-},
-
-OptionLabel = {
-
-Type = "TextLabel",
-
-Name = "ButtonLabel",
-
-BackgroundTransparency = 1,
-
-Size = UDim2.new(1, 0, 0, 30),
-
-Font = Enum.Font.SourceSansSemibold,
-
-TextSize = 16,
-
-TextXAlignment = Enum.TextXAlignment.Left
-
-},
-
-OptionDescription = {
-
-Type = "TextLabel",
-
-Name = "ButtonDescription",
-
-BackgroundTransparency = 1,
-
-TextTransparency = 1,
-
-Size = UDim2.new(1, 0, 0, 30),
-
-Font = Enum.Font.SourceSansSemibold,
-
-TextSize = 16,
-
-TextXAlignment = Enum.TextXAlignment.Left
-
-}
-
-}
-
-
-
-Library.Object = function(_, Type, Properties)
-
-local Object = nil
-
-if Objects[Type] and type(Objects[Type]) == "table" then
-
-Object = Instance.new(Objects[Type].Type)
-
-Object.Parent = Properties
-
-table.foreach(Objects[Type], function(Property, Value)
-
-if Property ~= "Type" then
-
-local s, e = pcall(function() Object[Property] = Value end)
-
-if not s then print(e) end
-
+--============================================================
+-- MAIN
+--============================================================
+function Library.new()
+    local self = setmetatable({}, Library)
+    self._windows = {}
+    return self
 end
 
-end)
+function Library:CreateWindow(opts)
+    opts = opts or {}
 
-else
+    local lp = getLocalPlayer()
+    if not lp then
+        error("[UI] LocalPlayer not available (run on client, not too early).", 2)
+    end
 
-Object = Instance.new(Type)
+    local window = setmetatable({}, Window)  -- Nota: nel tuo originale usavi __lockMeta, qui semplificato
+    window._lib = self
+    window._localPlayer = lp
+    window._title = opts.Title or "Menu"
+    window._subtitle = opts.Subtitle or "GTA Style"
+    window._sections = {}
+    window._sectionByName = {}
+    window._mode = "SECTIONS"
+    window._history = {}
+    window._currentSection = nil
+    window._selectionIndex = 1
+    window._dropdownState = nil
+    window._toggleKey = Enum.KeyCode.F8
+    window._connections = {}
+    window._destroyed = false
+    window._rowRefs = {}
+    window._activeSliderDrag = nil
+    window._hold = {
+        up = false, down = false, left = false, right = false,
+        active = false, lastMode = "", lastDir = 0,
+        heldSince = 0, lastRepeat = 0,
+    }
+    window._holdConfig = {
+        initialDelay = 0.16,
+        repeatRate = 0.045,
+        accel = 0.35,
+        maxAccel = 1.25,
+    }
 
-table.foreach(Properties, function(Property, Value)
+    -- Notification state
+    window._notif = {
+        container = nil,
+        stack = {},  -- {frame=, alive=true, createdAt=}
+        max = 3,
+    }
 
-local s, e = pcall(function() Object[Property] = Value end)
+    window:_buildUI()
+    window:_attachToCoreGui()
+    window:_bindInput()
+    window:_startHoldLoop()
+    window:_startSliderDragLoop()
+    window:_buildNotifications()
 
-if not s then print(e) table.foreach(Properties, print) end
+    window:Hide(true)
 
-end)
+    -- “auto-clean bootstrap” dopo 1s
+    task.delay(1, function()
+        if window._destroyed then return end
+        if window._screenGui and window._screenGui.Parent then
+            window._screenGui.Name = "UI_" .. HttpService:GenerateGUID(false)
+        end
+    end)
 
+    table.insert(self._windows, window)
+    return window
 end
 
-return Object
-
+--============================================================
+-- WINDOW CORE (COREGUI)
+--============================================================
+function Window:_ensureCoreGui()
+    return game:GetService("CoreGui")
 end
 
+function Window:_attachToCoreGui()
+    local cg = self:_ensureCoreGui()
+    if not cg then return end
 
+    if self._screenGui and self._screenGui.Parent ~= cg then
+        pcall(function()
+            self._screenGui.Parent = cg
+        end)
+    end
 
-
-
-
-
---services and useful stuff
-
-local Player = game:GetService("Players").LocalPlayer
-
-local RS = game:GetService("RunService")
-
-local TS = game:GetService("TweenService")
-
-local UIS = game:GetService("UserInputService")
-
-local Mouse = Player:GetMouse()
-
-
-
-local TI = function(Time)
-
-return TweenInfo.new(Time, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-
+    if self._screenGui then
+        self._screenGui.ResetOnSpawn = false
+    end
 end
 
+function Window:_buildUI()
+    -- Anti-duplicate via stable attribute tag
+    local cg = self:_ensureCoreGui()
+    if cg then
+        local found, extras = nil, {}
+        for _, g in ipairs(cg:GetChildren()) do
+            if g:IsA("ScreenGui") and g:GetAttribute("StableUIGUID") then  -- assumo __TAG fosse "StableUIGUID"
+                if not found then
+                    found = g
+                else
+                    table.insert(extras, g)
+                end
+            end
+        end
 
+        for _, ex in ipairs(extras) do
+            pcall(function() ex:Destroy() end)
+        end
 
---linoria's dragger
+        if found then
+            self._screenGui = found
+            local existingRoot = found:FindFirstChild("Root", true)
+            if existingRoot then
+                self._root = existingRoot
+                self._header = existingRoot:FindFirstChild("Header", true)
+                self._content = existingRoot:FindFirstChild("Content", true)
+                self._list = existingRoot:FindFirstChild("List", true)
+                self._layout = self._list and self._list:FindFirstChildOfClass("UIListLayout") or nil
+                self._dragZone = self._header and self._header:FindFirstChild("DragZone", true) or nil
+                self._titleLabel = self._header and self._header:FindFirstChild("Title", true) or nil
+                self._subtitleLabel = self._header and self._header:FindFirstChild("Subtitle", true) or nil
+                self._hint = existingRoot:FindFirstChild("Hint", true)
 
-local AddDragger = function(Frame)
+                if self._dragZone and self._root then
+                    self:_enableDragFromZone(true)
+                end
+                return
+            end
+        end
+    end
 
-local S, Event = pcall(function()
+    local sg = create("ScreenGui", {
+        Name = "CustomUI",
+        IgnoreGuiInset = false,
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    })
+    sg:SetAttribute("StableUIGUID", true)
+    self._screenGui = sg
 
-return Frame.MouseEnter
+    local root = create("Frame", {
+        Name = "Root",
+        Position = UDim2.fromOffset(40, 120),
+        Size = UDim2.fromOffset(340, 392),
+        BackgroundColor3 = Theme.PanelBg,
+        BackgroundTransparency = Theme.PanelBgTransparency,
+        Visible = true,
+    })
+    root.Parent = sg
+    self._root = root
 
-end)
+    create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = root})
+    create("UIStroke", {
+        Color = Theme.Stroke,
+        Thickness = 1,
+        Transparency = Theme.StrokeTransparency,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = root
+    })
 
+    local glow = create("Frame", {
+        Name = "Glow",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 12, 1, 12),
+        Position = UDim2.new(0, -6, 0, -6),
+        ZIndex = root.ZIndex - 1,
+    })
+    glow.Parent = root
+    create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = glow})
+    create("UIStroke", {
+        Color = Theme.Glow,
+        Thickness = 2,
+        Transparency = Theme.GlowTransparency,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = glow
+    })
 
+    local header = create("Frame", {
+        Name = "Header",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -16, 0, 56),
+        Position = UDim2.fromOffset(8, 8),
+    })
+    header.Parent = root
+    self._header = header
 
-if S then
+    local dragZone = create("TextButton", {
+        Name = "DragZone",
+        Text = "",
+        AutoButtonColor = false,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.fromOffset(0, 0),
+        ZIndex = 60,
+    })
+    dragZone.Parent = header
+    self._dragZone = dragZone
 
-Frame.Active = true;
+    local titleLabel = create("TextLabel", {
+        Name = "Title",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 24),
+        Position = UDim2.fromOffset(0, 6),
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Theme.Text,
+        Text = self._title,
+        ZIndex = 70,
+    })
+    titleLabel.Parent = header
+    self._titleLabel = titleLabel
 
+    local subtitleLabel = create("TextLabel", {
+        Name = "Subtitle",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 16),
+        Position = UDim2.fromOffset(0, 32),
+        Font = Enum.Font.Gotham,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Theme.MutedText,
+        Text = self._subtitle,
+        ZIndex = 70,
+    })
+    subtitleLabel.Parent = header
+    self._subtitleLabel = subtitleLabel
 
+    local divider = create("Frame", {
+        Name = "Divider",
+        BackgroundColor3 = Theme.Stroke,
+        BackgroundTransparency = 0.55,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 0, 1),
+        Position = UDim2.new(0, 0, 1, -2),
+    })
+    divider.Parent = header
 
-Event:connect(function()
+    local content = create("Frame", {
+        Name = "Content",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -16, 1, -92),
+        Position = UDim2.fromOffset(8, 70),
+    })
+    content.Parent = root
+    self._content = content
 
-local Input = Frame.InputBegan:connect(function(Key)
+    local scroll = create("ScrollingFrame", {
+        Name = "List",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        CanvasSize = UDim2.fromOffset(0, 0),
+        ScrollBarThickness = 3,
+        ScrollBarImageTransparency = 0.35,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+    })
+    scroll.Parent = content
+    self._list = scroll
 
-if Key.UserInputType == Enum.UserInputType.MouseButton1 then
+    create("UIPadding", {
+        PaddingTop = UDim.new(0, 6),
+        PaddingBottom = UDim.new(0, 24),
+        PaddingLeft = UDim.new(0, 6),
+        PaddingRight = UDim.new(0, 6),
+        Parent = scroll
+    })
 
-local ObjectPosition = Vector2.new(Mouse.X - Frame.AbsolutePosition.X, Mouse.Y - Frame.AbsolutePosition.Y)
+    local layout = create("UIListLayout", {
+        Padding = UDim.new(0, 6),
+        FillDirection = Enum.FillDirection.Vertical,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+    })
+    layout.Parent = scroll
+    self._layout = layout
 
-while RS.RenderStepped:wait() and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+    self._connections._layoutChanged = layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scroll.CanvasSize = UDim2.fromOffset(0, layout.AbsoluteContentSize.Y + 24)
+    end)
 
-Frame:TweenPosition(UDim2.new(0, Mouse.X - ObjectPosition.X + (Frame.Size.X.Offset * Frame.AnchorPoint.X), 0, Mouse.Y - ObjectPosition.Y + (Frame.Size.Y.Offset * Frame.AnchorPoint.Y)), 'Out', 'Quad', 0.06, true)
+    local hint = create("TextLabel", {
+        Name = "Hint",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -16, 0, 16),
+        Position = UDim2.new(0, 8, 1, -18),
+        Font = Enum.Font.Gotham,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Theme.MutedText,
+        Text = "Hold: 8/2 scroll • 4/6 slider • Enter • Backspace • F8",
+    })
+    hint.Parent = root
+    self._hint = hint
 
+    self:_enableDragFromZone()
+    self._root.Visible = true
+    self._root.BackgroundTransparency = 1
+
+    for _, d in ipairs(self._root:GetDescendants()) do
+        if d:IsA("TextLabel") or d:IsA("TextButton") then
+            d.TextTransparency = 1
+        elseif d:IsA("UIStroke") then
+            d.Transparency = 1
+        end
+    end
 end
 
+--============================================================
+-- NOTIFICATIONS
+--============================================================
+function Window:_buildNotifications()
+    if self._notif.container and self._notif.container.Parent then return end
+    if not self._screenGui then return end
+
+    local holder = create("Frame", {
+        Name = "Notifications",
+        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(320, 220),
+        AnchorPoint = Vector2.new(1, 1),
+        Position = UDim2.new(1, -18, 1, -18),
+        ZIndex = 5000,
+    })
+    holder.Parent = self._screenGui
+    self._notif.container = holder
+
+    local list = create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        FillDirection = Enum.FillDirection.Vertical,
+        HorizontalAlignment = Enum.HorizontalAlignment.Right,
+        VerticalAlignment = Enum.VerticalAlignment.Bottom,
+        Padding = UDim.new(0, 10),
+    })
+    list.Parent = holder
+    self._notif._layout = list
 end
 
-end)
-
-
-
-local Leave
-
-Leave = Frame.MouseLeave:connect(function()
-
-Input:disconnect()
-
-Leave:disconnect()
-
-end)
-
-end)
-
+local function _typeColor(t)
+    if t == "Success" then return Theme.Success end
+    if t == "Warning" then return Theme.Warning end
+    if t == "Error" then return Theme.Error end
+    return Theme.Info
 end
 
+function Window:_notifRemoveOldestIfNeeded()
+    if #self._notif.stack < self._notif.max then return end
+    local oldest = self._notif.stack[1]
+    if not oldest or not oldest.frame then
+        table.remove(self._notif.stack, 1)
+        return
+    end
+    self:_dismissNotification(oldest, true)
+    table.remove(self._notif.stack, 1)
 end
 
-
-
-Library.Create = function(_, LibraryOptions)
-
-local self = Library
-
-
-
-self.Dropdowns = {}
-
-self.ColourPickers = {}
-
-LibraryOptions = LibraryOptions or {}
-
-LibraryOptions.Theme = LibraryOptions.Theme or "Dark"
-
-LibraryOptions.Name = LibraryOptions.Name or "UI Library"
-
-LibraryOptions.Size = LibraryOptions.Size or UDim2.new(0, 555, 0, 400)
-
-LibraryOptions.Developer = LibraryOptions.Developer or false
-
-
-
-local Theme = Themes[LibraryOptions.Theme] or Themes["Dark"]
-
-
-
-local Gui = self:Object("ScreenGui", {
-
-Name = "UILibrary",
-
-Parent = (RS:IsStudio() and Player.PlayerGui) or game.CoreGui
-
-})
-
-
-
-local MainFrame = self:Object("Frame", {
-
-Name = "MainFrame",
-
-Parent = Gui,
-
-AnchorPoint = Vector2.new(0.5, 0.5),
-
-BackgroundTransparency = 1,
-
-Position = UDim2.new(0.5, 0, 0.5, 0),
-
-Size = UDim2.new(0, 0, 0, 0)
-
-})
-
-
-
-AddDragger(MainFrame)
-
-
-
-self:Object("Shadow", MainFrame)
-
-
-
-local OptionsContainer = self:Object("Frame", {
-
-Name = "OptionsContainer",
-
-Parent = MainFrame,
-
-Position = UDim2.new(0, 100, 0, 0),
-
-Size = UDim2.new(1, -100, 1, 0),
-
-BackgroundColor3 = Theme.Main,
-
-BorderSizePixel = 0
-
-})
-
-
-
-local OptionsContainerClips = self:Object("Frame", {
-
-BackgroundTransparency = 1,
-
-Parent = OptionsContainer,
-
-Size = UDim2.new(1, 200, 1, 0),
-
-ClipsDescendants = true
-
-})
-
-
-
-self:Object("Frame", {
-
-Parent = OptionsContainer,
-
-Size = UDim2.new(0, 4, 1, 0),
-
-BorderSizePixel = 0,
-
-BackgroundColor3 = Theme.Main
-
-})
-
-
-
-self:Object("Round", OptionsContainer)
-
-
-
-local Tabs = self:Object("Frame", {
-
-Name = "Tabs",
-
-Parent = MainFrame,
-
-BackgroundColor3 = Theme.TabsBackground,
-
-Size = UDim2.new(1, 0, 1, 0),
-
-ZIndex = 2
-
-})
-
-
-
-self:Object("Round", Tabs)
-
-
-
-local TabsRoundFix = self:Object("Frame", {
-
-Parent = MainFrame,
-
-BorderSizePixel = 0,
-
-BackgroundColor3 = Theme.TabsBackground,
-
-Size = UDim2.new(0, 3, 1, 0),
-
-Position = UDim2.new(0, 97, 0, 0)
-
-})
-
-
-
-local TabsLayout = self:Object("UIListLayout", {
-
-Name = "TabsLayout",
-
-Parent = Tabs,
-
-HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-})
-
-
-
-local TabsPadding = self:Object("UIPadding", {
-
-Name = "TabsPadding",
-
-Parent = Tabs,
-
-PaddingTop = UDim.new(0, 6)
-
-})
-
-
-
---tabs tween
-
-Tabs.ChildAdded:connect(function(Child)
-
-TS:Create(Child:WaitForChild("NameLabel"), TI(0.2), {TextTransparency = 0}):Play()
-
-end)
-
-
-
---open animation
-
-TS:Create(MainFrame, TI(0.3), {Size = LibraryOptions.Size}):Play()
-
-wait(0.3)
-
-TS:Create(Tabs, TI(0.3), {Size = UDim2.new(0, 100, 1, 0)}):Play()
-
-local UIToggleState = true
-
-
-
-UIS.InputEnded:connect(function(Input)
-
-if Input.KeyCode == Enum.KeyCode.RightControl then
-
-UIToggleState = not UIToggleState
-
---[[if UIToggleState then
-
-TS:Create(Tabs, TI(0.2), {Size = UDim2.new(1, 0, 1, 0)}):Play()
-
-for i, v in next, Tabs:GetChildren() do
-
-spawn(function()
-
-if v.ClassName == "TextButton" then
-
-TS:Create(v.NameLabel, TI(0.15), {TextTransparency = 1}):Play()
-
+function Window:_dismissNotification(n, instant)
+    if not n or not n.frame then return end
+    if n.alive == false then return end
+    n.alive = false
+
+    local fr = n.frame
+    if not fr.Parent then return end
+
+    if instant then
+        pcall(function() fr:Destroy() end)
+        return
+    end
+
+    local startPos = fr.Position
+    tween(fr, TweenNotifOut, {
+        Position = startPos + UDim2.fromOffset(34, 0),
+        BackgroundTransparency = 1
+    })
+
+    for _, d in ipairs(fr:GetDescendants()) do
+        if d:IsA("TextLabel") or d:IsA("TextButton") then
+            pcall(function()
+                tween(d, TweenNotifOut, {TextTransparency = 1})
+            end)
+        elseif d:IsA("UIStroke") then
+            pcall(function()
+                tween(d, TweenNotifOut, {Transparency = 1})
+            end)
+        end
+    end
+
+    task.delay(TweenNotifOut.Time + 0.03, function()
+        pcall(function() fr:Destroy() end)
+    end)
 end
 
-end)
+function Window:_createNotification(opts, isPrompt, cb)
+    opts = opts or {}
+    local title = tostring(opts.Title or "Notifica")
+    local text = tostring(opts.Text or "")
+    local ntype = tostring(opts.Type or "Info")
+    local duration = tonumber(opts.Duration)
+    if duration == nil then duration = isPrompt and 10 or 3 end
+    duration = clamp(duration, 1, 60)
 
+    self:_buildNotifications()
+    if not self._notif.container then return end
+
+    self:_notifRemoveOldestIfNeeded()
+
+    local fr = create("Frame", {
+        BackgroundColor3 = Theme.NotifBg,
+        BackgroundTransparency = 0.06,
+        BorderSizePixel = 0,
+        Size = UDim2.fromOffset(300, isPrompt and 110 or 90),
+        Position = UDim2.new(0, 40, 0, 0),
+        ZIndex = 5100,
+    })
+    fr.Parent = self._notif.container
+
+    create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = fr})
+
+    local st = create("UIStroke", {
+        Color = Theme.NotifStroke,
+        Thickness = 1,
+        Transparency = 0.25,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = fr
+    })
+
+    local glow = create("UIStroke", {
+        Color = Theme.NotifShadow,
+        Thickness = 2,
+        Transparency = 0.90,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = fr
+    })
+
+    local accent = create("Frame", {
+        Name = "Accent",
+        BackgroundColor3 = _typeColor(ntype),
+        BackgroundTransparency = 0.15,
+        BorderSizePixel = 0,
+        Size = UDim2.new(0, 4, 1, -16),
+        Position = UDim2.fromOffset(10, 8),
+        ZIndex = 5200,
+    })
+    accent.Parent = fr
+    create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = accent})
+
+    local tLabel = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -52, 0, 22),
+        Position = UDim2.fromOffset(22, 10),
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Theme.Text,
+        Text = title,
+        ZIndex = 5200,
+    })
+    tLabel.Parent = fr
+
+    local typeLabel = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 90, 0, 16),
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -30, 0, 12),
+        Font = Enum.Font.GothamSemibold,
+        TextSize = 11,
+        TextXAlignment = Enum.TextXAlignment.Right,
+        TextColor3 = Theme.MutedText,
+        Text = string.upper(ntype),
+        ZIndex = 5200,
+    })
+    typeLabel.Parent = fr
+
+    local xBtn = create("TextButton", {
+        BackgroundTransparency = 1,
+        Size = UDim2.fromOffset(18, 18),
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -10, 0, 10),
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+        TextColor3 = Theme.MutedText,
+        Text = "×",
+        AutoButtonColor = false,
+        ZIndex = 5300,
+    })
+    xBtn.Parent = fr
+
+    local body = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -30, 0, isPrompt and 36 or 42),
+        Position = UDim2.fromOffset(22, 34),
+        Font = Enum.Font.Gotham,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        TextColor3 = Theme.MutedText,
+        TextWrapped = true,
+        Text = text,
+        ZIndex = 5200,
+    })
+    body.Parent = fr
+
+    local n = {frame = fr, alive = true, createdAt = os.clock()}
+    table.insert(self._notif.stack, n)
+
+    local function closeNow()
+        self:_dismissNotification(n, false)
+        for i = #self._notif.stack, 1, -1 do
+            if self._notif.stack[i] == n then
+                table.remove(self._notif.stack, i)
+                break
+            end
+        end
+    end
+
+    xBtn.MouseButton1Click:Connect(closeNow)
+
+    if isPrompt then
+        local yes = create("TextButton", {
+            BackgroundColor3 = Theme.Accent,
+            BackgroundTransparency = 0.10,
+            BorderSizePixel = 0,
+            Size = UDim2.fromOffset(96, 26),
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0, 22, 1, -12),
+            Font = Enum.Font.GothamBold,
+            TextSize = 12,
+            TextColor3 = Theme.Text,
+            Text = "YES",
+            AutoButtonColor = false,
+            ZIndex = 5300,
+        })
+        yes.Parent = fr
+        create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = yes})
+
+        local no = create("TextButton", {
+            BackgroundColor3 = Theme.SliderTrack,
+            BackgroundTransparency = 0.05,
+            BorderSizePixel = 0,
+            Size = UDim2.fromOffset(96, 26),
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0, 126, 1, -12),
+            Font = Enum.Font.GothamBold,
+            TextSize = 12,
+            TextColor3 = Theme.Text,
+            Text = "NO",
+            AutoButtonColor = false,
+            ZIndex = 5300,
+        })
+        no.Parent = fr
+        create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = no})
+
+        local decided = false
+        local function decide(v)
+            if decided then return end
+            decided = true
+            if type(cb) == "function" then
+                task.spawn(cb, v)
+            end
+            closeNow()
+        end
+
+        yes.MouseButton1Click:Connect(function() decide(true) end)
+        no.MouseButton1Click:Connect(function() decide(false) end)
+
+        task.delay(duration, function()
+            if decided then return end
+            decide(false)
+        end)
+    else
+        task.delay(duration, function()
+            if n.alive then closeNow() end
+        end)
+    end
+
+    -- ANIM IN
+    local endPos = UDim2.new(0, 0, 0, 0)
+    fr.Position = UDim2.new(0, 40, 0, 0)
+    fr.BackgroundTransparency = 1
+    st.Transparency = 1
+    glow.Transparency = 1
+
+    for _, d in ipairs(fr:GetDescendants()) do
+        if d:IsA("TextLabel") or d:IsA("TextButton") then
+            d.TextTransparency = 1
+        end
+    end
+
+    tween(fr, TweenNotifIn, {Position = endPos, BackgroundTransparency = 0.06})
+    tween(st, TweenNotifIn, {Transparency = 0.25})
+    tween(glow, TweenNotifIn, {Transparency = 0.90})
+
+    for _, d in ipairs(fr:GetDescendants()) do
+        if d:IsA("TextLabel") or d:IsA("TextButton") then
+            tween(d, TweenNotifIn, {TextTransparency = 0})
+        end
+    end
+
+    return n
 end
 
-
-
-for i, v in next, OptionsContainerClips:GetChildren() do
-
-if v.ClassName == "ScrollingFrame" then
-
-v.CanvasSize = UDim2.new(0, 0, 0, 0)
-
+function Window:Notify(opts)
+    if self._destroyed then return end
+    self:_createNotification(opts, false)
 end
 
+function Window:Prompt(opts, callback)
+    if self._destroyed then return end
+    self:_createNotification(opts, true, callback)
 end
 
+-- ... (continua con drag, slider loop, input, hold loop, render, nav, api, section, element)
 
+-- Nota: il codice è molto lungo. Ho formattato fino alle notifiche in modo completo.
+-- Se vuoi la parte rimanente (drag, input, hold, render, nav, section, element) formattata allo stesso modo,
+-- dimmi "continua" o "dammi la parte dopo le notifiche" e te la mando indentata correttamente.
 
-wait(0.5)
+--============================================================
+-- DRAG MENU
+--============================================================
+function Window:_enableDragFromZone(rebindOnly)
+    if rebindOnly then
+        if self._connections._dragDown then safeDisconnect(self._connections._dragDown) end
+        if self._connections._dragUp then safeDisconnect(self._connections._dragUp) end
+        if self._connections._dragMove then safeDisconnect(self._connections._dragMove) end
+    end
 
-MainFrame.ClipsDescendants = true
+    local dragging = false
+    local dragStart, startPos
 
-TS:Create(MainFrame, TI(0.2), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+    self._connections._dragDown = self._dragZone.MouseButton1Down:Connect(function()
+        if not self._root.Visible then return end
+        dragging = true
+        dragStart = UserInputService:GetMouseLocation()
+        startPos = self._root.Position
+    end)
 
-else
+    self._connections._dragUp = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
 
-TS:Create(MainFrame, TI(0.2), {Size = LibraryOptions.Size}):Play()
-
-MainFrame.ClipsDescendants = false
-
-wait(0.5)
-
-TS:Create(Tabs, TI(0.2), {Size = UDim2.new(0, 100, 1, 0)}):Play()
-
-for i, v in next, OptionsContainerClips:GetChildren() do
-
-if v.ClassName == "ScrollingFrame" then
-
-v.CanvasSize = UDim2.new(1, 0, 1, 0)
-
+    self._connections._dragMove = UserInputService.InputChanged:Connect(function(input)
+        if not dragging then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            local pos = UserInputService:GetMouseLocation()
+            local delta = pos - dragStart
+            self._root.Position = UDim2.fromOffset(
+                startPos.X.Offset + delta.X,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
 end
 
+--============================================================
+-- SLIDER DRAG LOOP
+--============================================================
+function Window:_startSliderDragLoop()
+    self._connections._sliderDragLoop = RunService.RenderStepped:Connect(function()
+        if self._destroyed then return end
+        local drag = self._activeSliderDrag
+        if not drag then return end
+        self:_updateSliderFromMouse(drag)
+    end)
+
+    self._connections._sliderStop = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self._activeSliderDrag = nil
+        end
+    end)
 end
 
+function Window:_updateSliderFromMouse(drag)
+    local el    = drag.element
+    local track = drag.track
+    local fill  = drag.fill
+    local right = drag.right
 
+    if not el or not track or not fill then return end
+    if not track.Parent then return end
 
-for i, v in next, Tabs:GetChildren() do
+    local mousePos = UserInputService:GetMouseLocation()
+    local absPos   = track.AbsolutePosition
+    local absSize  = track.AbsoluteSize
+    local x        = clamp(mousePos.X - absPos.X, 0, absSize.X)
+    local pct      = (absSize.X > 0) and (x / absSize.X) or 0
 
-spawn(function()
+    local raw = el.Min + (el.Max - el.Min) * pct
+    local v   = clamp(roundToStep(raw, el.Step), el.Min, el.Max)
 
-if v.ClassName == "TextButton" then
+    el:_setSliderValueNoRefresh(v)
 
-TS:Create(v.NameLabel, TI(0.15), {TextTransparency = 0}):Play()
+    local fillPct = 0
+    if el.Max > el.Min then
+        fillPct = (el.Value - el.Min) / (el.Max - el.Min)
+    end
+    fillPct = clamp(fillPct, 0, 1)
 
+    fill.Size = UDim2.new(fillPct, 0, 1, 0)
+    if right then
+        right.Text = tostring(el.Value)
+    end
 end
 
-end)
+--============================================================
+-- INPUT BINDING
+--============================================================
+function Window:_bindInput()
+    self._connections._inputBegan = UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe or self._destroyed then return end
 
+        if input.KeyCode == self._toggleKey then
+            self:Toggle()
+            return
+        end
+
+        if not self:IsVisible() then return end
+
+        if input.KeyCode == Enum.KeyCode.KeypadEight then
+            self._hold.up = true
+            self:_navUp()
+        elseif input.KeyCode == Enum.KeyCode.KeypadTwo then
+            self._hold.down = true
+            self:_navDown()
+        elseif input.KeyCode == Enum.KeyCode.KeypadFour then
+            self._hold.left = true
+            self:_navLeft()
+        elseif input.KeyCode == Enum.KeyCode.KeypadSix then
+            self._hold.right = true
+            self:_navRight()
+        elseif input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter then
+            self:_navSelect()
+        elseif input.KeyCode == Enum.KeyCode.Backspace then
+            self:_navBack()
+        end
+    end)
+
+    self._connections._inputEnded = UserInputService.InputEnded:Connect(function(input, gpe)
+        if gpe or self._destroyed then return end
+
+        if input.KeyCode == Enum.KeyCode.KeypadEight then
+            self._hold.up = false
+        elseif input.KeyCode == Enum.KeyCode.KeypadTwo then
+            self._hold.down = false
+        elseif input.KeyCode == Enum.KeyCode.KeypadFour then
+            self._hold.left = false
+        elseif input.KeyCode == Enum.KeyCode.KeypadSix then
+            self._hold.right = false
+        end
+    end)
 end
 
-end]]
+--============================================================
+-- HOLD REPEAT LOOP
+--============================================================
+function Window:_startHoldLoop()
+    local hold = self._hold
+    local cfg  = self._holdConfig
 
-local Old = MainFrame.Position
+    self._connections._holdLoop = RunService.Heartbeat:Connect(function()
+        if self._destroyed then return end
+        if not self:IsVisible() then
+            hold.up = false; hold.down = false; hold.left = false; hold.right = false
+            hold.active = false
+            return
+        end
 
-if UIToggleState then
+        local listDir  = 0
+        if hold.down and not hold.up   then listDir = 1  end
+        if hold.up   and not hold.down then listDir = -1 end
 
-MainFrame.Position = UDim2.new(0.5, 0 , 0.5, 0)
+        local sliderDir = 0
+        if hold.right and not hold.left  then sliderDir = 1  end
+        if hold.left  and not hold.right then sliderDir = -1 end
 
-else
+        local sliderEligible = false
+        local currentSlider  = nil
 
-Old = MainFrame.Position
+        if self._mode == "ELEMENTS" and self._currentSection then
+            local els = self._currentSection:_getVisibleElements()
+            local el  = els[self._selectionIndex]
+            if el and el.Type == "Slider" then
+                sliderEligible = true
+                currentSlider  = el
+            end
+        end
 
-MainFrame.Position = UDim2.new(0.5, 0, 10000, 0)
+        local mode = ""
+        local dir  = 0
 
+        if sliderEligible and sliderDir ~= 0 then
+            mode = "SLIDER"
+            dir  = sliderDir
+        elseif listDir ~= 0 then
+            mode = "LIST"
+            dir  = listDir
+        else
+            hold.active = false
+            return
+        end
+
+        local now = os.clock()
+
+        if (not hold.active) or (hold.lastMode ~= mode) or (hold.lastDir ~= dir) then
+            hold.active     = true
+            hold.lastMode   = mode
+            hold.lastDir    = dir
+            hold.heldSince  = now
+            hold.lastRepeat = now
+            return
+        end
+
+        if (now - hold.heldSince) < cfg.initialDelay then return end
+        if (now - hold.lastRepeat) < cfg.repeatRate   then return end
+
+        hold.lastRepeat = now
+
+        local t    = now - hold.heldSince
+        local mult = 1 + clamp(t * cfg.accel, 0, cfg.maxAccel)
+
+        if mode == "LIST" then
+            local steps = 1
+            if mult > 1.5 then steps = 2 end
+            for _ = 1, steps do
+                if dir == 1 then
+                    self:_navDown()
+                else
+                    self:_navUp()
+                end
+            end
+        else  -- SLIDER
+            local steps = 1
+            if mult > 1.4 then steps = 2 end
+            if mult > 2.1 then steps = 3 end
+
+            currentSlider:_setSliderValueNoRefresh(
+                currentSlider.Value + currentSlider.Step * dir * steps
+            )
+            if currentSlider._uiUpdate then
+                currentSlider._uiUpdate()
+            end
+        end
+    end)
 end
 
+--============================================================
+-- UI HELPERS
+--============================================================
+function Window:_clearList()
+    self._rowRefs = {}
+    for _, c in ipairs(self._list:GetChildren()) do
+        if c:IsA("Frame") then
+            c:Destroy()
+        end
+    end
 end
 
-end)
+function Window:_transition(fn)
+    local fade = create("Frame", {
+        BackgroundColor3 = Theme.PanelBg,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 999,
+    })
+    fade.Parent = self._content
 
+    tween(fade, TweenMed, {BackgroundTransparency = 0.15})
 
-
-local TabsLibrary = {}
-
-
-
-TabsLibrary.Quit = function(_, QuitOptions)
-
-QuitOptions = QuitOptions or {}
-
-QuitOptions.Message = QuitOptions.Message or "Goodbye..."
-
-QuitOptions.Length = QuitOptions.Length or 1
-
-TS:Create(Tabs, TI(0.2), {Size = UDim2.new(1, 0, 1, 0)}):Play()
-
-for i, v in next, Tabs:GetChildren() do
-
-spawn(function()
-
-if v.ClassName == "TextButton" then
-
-TS:Create(v.NameLabel, TI(0.15), {TextTransparency = 1}):Play()
-
-wait(0.15)
-
-v:Destroy()
-
+    task.delay(TweenMed.Time, function()
+        if self._destroyed then return end
+        fn()
+        tween(fade, TweenMed, {BackgroundTransparency = 1})
+        task.delay(TweenMed.Time, function()
+            if fade then fade:Destroy() end
+        end)
+    end)
 end
 
-end)
+function Window:_makeRow(order, isHeader)
+    local h = isHeader and 28 or 40
 
+    local row = create("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, h),
+        LayoutOrder = order,
+    })
+
+    local btn = create("TextButton", {
+        BackgroundTransparency = 1,
+        Text = "",
+        AutoButtonColor = false,
+        Size = UDim2.new(1, 0, 1, 0),
+    })
+    btn.Parent = row
+
+    local hl = create("Frame", {
+        BackgroundColor3 = Theme.HighlightBg,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 2,
+    })
+    hl.Parent = row
+    create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = hl})
+
+    local bar = create("Frame", {
+        BackgroundColor3 = Theme.HighlightBar,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Size = UDim2.new(0, 3, 1, -10),
+        Position = UDim2.fromOffset(7, 5),
+        ZIndex = 3,
+    })
+    bar.Parent = row
+    create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = bar})
+
+    local title = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -110, 1, 0),
+        Position = UDim2.fromOffset(14, -6),
+        Font = Enum.Font.Gotham,
+        TextSize = isHeader and 12 or 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Theme.Text,
+        Text = "",
+        ZIndex = 4,
+    })
+    title.Parent = row
+
+    local right = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 90, 1, 0),
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -8, 0, 0),
+        Font = Enum.Font.GothamSemibold,
+        TextSize = isHeader and 12 or 12,
+        TextXAlignment = Enum.TextXAlignment.Right,
+        TextColor3 = Theme.MutedText,
+        Text = "",
+        ZIndex = 4,
+    })
+    right.Parent = row
+
+    local stroke = create("UIStroke", {
+        Color = Theme.Accent,
+        Thickness = 1,
+        Transparency = 1,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+    })
+    stroke.Parent = hl
+
+    self._rowRefs[row] = {hl=hl, bar=bar, stroke=stroke, title=title, right=right, btn=btn}
+
+    return row
 end
 
-
-
-for i, v in next, OptionsContainerClips:GetChildren() do
-
-if v.ClassName == "ScrollingFrame" then
-
-v.CanvasSize = UDim2.new(0, 0, 0, 0)
-
+function Window:_rowsSorted()
+    local rows = {}
+    for _, c in ipairs(self._list:GetChildren()) do
+        if c:IsA("Frame") and self._rowRefs[c] then
+            table.insert(rows, c)
+        end
+    end
+    table.sort(rows, function(a,b)
+        return (a.LayoutOrder or 0) < (b.LayoutOrder or 0)
+    end)
+    return rows
 end
 
+function Window:_applyHighlight()
+    local rows = self:_rowsSorted()
+    if #rows == 0 then return end
+
+    self._selectionIndex = clamp(self._selectionIndex, 1, #rows)
+
+    for i, row in ipairs(rows) do
+        local isSel = (i == self._selectionIndex)
+        if self._mode == "DROPDOWN" and i == 1 then isSel = false end
+
+        local r = self._rowRefs[row]
+        tween(r.hl,    TweenFast, {BackgroundTransparency = isSel and Theme.HighlightTransparency or 1})
+        tween(r.bar,   TweenFast, {BackgroundTransparency = isSel and 0.15 or 1})
+        tween(r.stroke, TweenFast, {Transparency = isSel and 0.60 or 1})
+    end
+
+    self:_ensureSelectionVisible()
 end
 
+function Window:_ensureSelectionVisible()
+    local rows = self:_rowsSorted()
+    if #rows == 0 then return end
 
+    local row = rows[self._selectionIndex]
+    if not row then return end
 
-wait(0.5)
+    local sf           = self._list
+    local paddingTop    = 6
+    local paddingBottom = 12
 
-MainFrame.ClipsDescendants = true
+    local viewTop    = sf.CanvasPosition.Y
+    local viewBottom = sf.CanvasPosition.Y + sf.AbsoluteWindowSize.Y
 
-TS:Create(MainFrame, TI(0.2), {Size = UDim2.new(0, 200, 0, 75)}):Play()
+    local rowTop    = row.AbsolutePosition.Y - sf.AbsolutePosition.Y + sf.CanvasPosition.Y
+    local rowBottom = rowTop + row.AbsoluteSize.Y
 
-wait(0.3)
-
-local QuitMessage = self:Object("TextLabel", {
-
-Parent = MainFrame,
-
-AnchorPoint = Vector2.new(0.5, 1),
-
-BackgroundTransparency = 1,
-
-TextTransparency = 1,
-
-Font = Enum.Font.SourceSansSemibold,
-
-TextSize = 20,
-
-Text = QuitOptions.Message,
-
-TextColor3 = Theme.QuitText,
-
-Position = UDim2.new(0.5, 0, 0.5, 0),
-
-ZIndex = 5
-
-})
-
-
-
-TS:Create(QuitMessage, TI(0.2), {TextTransparency = 0}):Play()
-
-wait(QuitOptions.Length)
-
-TS:Create(QuitMessage, TI(0.15), {TextTransparency = 1}):Play()
-
-TS:Create(MainFrame, TI(0.2), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-
-wait(0.2)
-
-Gui:Destroy()
-
+    if rowTop < viewTop + paddingTop then
+        sf.CanvasPosition = Vector2.new(0, math.max(0, rowTop - paddingTop))
+    elseif rowBottom > viewBottom - paddingBottom then
+        sf.CanvasPosition = Vector2.new(0, math.max(0, rowBottom - sf.AbsoluteWindowSize.Y + paddingBottom))
+    end
 end
 
-
-
-TabsLibrary.Tab = function(_, TabOptions)
-
-local Initial = (self.Count == 0 and true) or false
-
-TabOptions = TabOptions or {}
-
-TabOptions.Name = TabOptions.Name or "Tab"
-
-
-
-local Tab = self:Object("TextButton", {
-
-Name = "Tab",
-
-Parent = Tabs,
-
-BackgroundTransparency = 1,
-
-Size = UDim2.new(1, 0, 0, 28),
-
-Text = "",
-
-ZIndex = 3
-
-})
-
-
-
-self.Selected = (Initial and Tab) or self.Selected
-
-
-
-local Label = self:Object("TextLabel", {
-
-Name = "NameLabel",
-
-Parent = Tab,
-
-Text = TabOptions.Name,
-
-BackgroundColor3 = Color3.new(1, 1, 1),
-
-BackgroundTransparency = 1,
-
-Position = UDim2.new(0, 6, 0, 0),
-
-Size = UDim2.new(1, 0, 1, 0),
-
-Font = Enum.Font.SourceSansSemibold,
-
-TextColor3 = (Initial and Theme.TabSelected) or Theme.TabDefault,
-
-TextSize = 18,
-
-TextTransparency = 1,
-
-TextXAlignment = Enum.TextXAlignment.Left,
-
-ZIndex = 4
-
-})
-
-
-
-local TextPadding = self:Object("UIPadding", {
-
-Name = "TabPadding",
-
-Parent = Label,
-
-PaddingLeft = UDim.new(0, 6)
-
-})
-
-
-
-local FunctionsContainer = self:Object("ScrollingFrame", {
-
-Name = "Tab",
-
-Parent = OptionsContainerClips,
-
-Size = UDim2.new(1, -200, 1, 0),
-
-Visible = Initial,
-
-BorderSizePixel = 0,
-
-BackgroundTransparency = 1,
-
-CanvasSize = UDim2.new(0, 0, 0, 0),
-
-ScrollBarThickness = 2,
-
-ScrollingDirection = Enum.ScrollingDirection.Y,
-
-ScrollBarImageColor3 = Theme.ScrollBar,
-
-ClipsDescendants = false
-
-})
-
-
-
-local FunctionsLayout = self:Object("UIListLayout", {
-
-Parent = FunctionsContainer,
-
-HorizontalAlignment = Enum.HorizontalAlignment.Center,
-
-Padding = UDim.new(0, 6)
-
-})
-
-
-
-local FunctionsContainerPadding = self:Object("UIPadding", {
-
-Parent = FunctionsContainer,
-
-PaddingTop = UDim.new(0, 10)
-
-})
-
-
-
-self.Count += 1
-
-
-
-Tab.MouseEnter:connect(function()
-
-if Tab ~= self.Selected then
-
-TS:Create(Label, TI(0.1), {TextColor3 = Theme.TabHovered}):Play()
-
+--============================================================
+-- RENDERING
+--============================================================
+function Window:_renderSections()
+    self:_clearList()
+    self._mode = "SECTIONS"
+    self._currentSection = nil
+    self._dropdownState = nil
+
+    for i, sec in ipairs(self._sections) do
+        local row = self:_makeRow(i, false)
+        row.Parent = self._list
+        local r = self._rowRefs[row]
+
+        r.title.Text = sec.Name
+        r.right.Text = "→"
+
+        r.btn.MouseButton1Click:Connect(function()
+            self._selectionIndex = i
+            self:_applyHighlight()
+            self:_enterSection(i)
+        end)
+    end
+
+    self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #self._sections))
+    self:_applyHighlight()
 end
 
-end)
+function Window:_renderElements(section)
+    self:_clearList()
+    self._mode = "ELEMENTS"
+    self._currentSection = section
+    self._dropdownState = nil
 
+    local els = section:_getVisibleElements()
 
+    for i, el in ipairs(els) do
+        local row = self:_makeRow(i, false)
+        row.Parent = self._list
+        local r = self._rowRefs[row]
 
-Tab.MouseLeave:connect(function()
+        r.title.Text = el.Text
 
-if Tab ~= self.Selected then
+        if el.Type == "Label" then
+            r.right.Text = ""
+            r.btn.Active = false
+            r.title.TextColor3 = Theme.MutedText
 
-TS:Create(Label, TI(0.1), {TextColor3 = Theme.TabDefault}):Play()
+        elseif el.Type == "Button" then
+            r.right.Text = "→"
+            r.btn.MouseButton1Click:Connect(function()
+                self._selectionIndex = i
+                self:_applyHighlight()
+                el:Activate()
+            end)
 
+        elseif el.Type == "Toggle" then
+            local function applyToggleUI()
+                r.right.Text = el.Value and "ON" or "OFF"
+                r.right.TextColor3 = el.Value and Theme.Text or Theme.MutedText
+            end
+            applyToggleUI()
+
+            r.btn.MouseButton1Click:Connect(function()
+                self._selectionIndex = i
+                self:_applyHighlight()
+                el:Set(not el.Value)
+                applyToggleUI()
+            end)
+
+        elseif el.Type == "Slider" then
+            r.right.Text = tostring(el.Value)
+
+            local wrap = create("Frame", {
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, -150, 0, 8),
+                Position = UDim2.new(0, 12, 1, -14),
+                ZIndex = 10,
+            })
+            wrap.Parent = row
+
+            local track = create("Frame", {
+                BackgroundColor3 = Theme.SliderTrack,
+                BackgroundTransparency = 0.15,
+                BorderSizePixel = 0,
+                Size = UDim2.new(1, 0, 1, 0),
+            })
+            track.Parent = wrap
+            create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = track})
+
+            local fill = create("Frame", {
+                BackgroundColor3 = Theme.SliderFill,
+                BackgroundTransparency = 0.03,
+                BorderSizePixel = 0,
+                Size = UDim2.new(0, 0, 1, 0),
+            })
+            fill.Parent = track
+            create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = fill})
+
+            local function update()
+                local pct = 0
+                if el.Max > el.Min then
+                    pct = (el.Value - el.Min) / (el.Max - el.Min)
+                end
+                pct = clamp(pct, 0, 1)
+                fill.Size = UDim2.new(pct, 0, 1, 0)
+                r.right.Text = tostring(el.Value)
+            end
+
+            el._uiUpdate = update
+            update()
+
+            track.InputBegan:Connect(function(input)
+                if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                self._selectionIndex = i
+                self:_applyHighlight()
+                self._activeSliderDrag = {
+                    element = el,
+                    track   = track,
+                    fill    = fill,
+                    right   = r.right
+                }
+            end)
+
+            r.btn.MouseButton1Click:Connect(function()
+                self._selectionIndex = i
+                self:_applyHighlight()
+            end)
+
+        elseif el.Type == "Dropdown" then
+            local function applyDropdownUI()
+                r.right.Text = el.Options[el.ValueIndex] or ""
+            end
+            applyDropdownUI()
+
+            r.btn.MouseButton1Click:Connect(function()
+                self._selectionIndex = i
+                self:_applyHighlight()
+                self:_openDropdown(el, i)
+            end)
+        end
+    end
+
+    self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+    self:_applyHighlight()
 end
 
-end)
+function Window:_renderDropdown(el)
+    self:_clearList()
+    self._mode = "DROPDOWN"
+    self._dropdownState = {element = el}
 
+    local head = self:_makeRow(1, true)
+    head.Parent = self._list
 
+    local r = self._rowRefs[head]
+    r.title.Text = el.Text .. " (Select)"
+    r.title.TextColor3 = Theme.MutedText
+    r.btn.Active = false
 
-Tab.MouseButton1Click:connect(function()
+    for i, opt in ipairs(el.Options) do
+        local row = self:_makeRow(i + 1, false)
+        row.Parent = self._list
+        local r = self._rowRefs[row]
 
-for i, v in next, OptionsContainerClips:GetChildren() do
+        r.title.Text = tostring(opt)
+        r.right.Text = (i == el.ValueIndex) and "✓" or ""
 
-if v.Name == "Tab" then
+        r.btn.MouseButton1Click:Connect(function()
+            el:SetIndex(i)
+            self:_closeDropdown()
+        end)
+    end
 
-v.Visible = false
-
+    self._selectionIndex = clamp((el.ValueIndex or 1) + 1, 2, math.max(2, #el.Options + 1))
+    self:_applyHighlight()
 end
 
+function Window:_openDropdown(el, parentSelection)
+    table.insert(self._history, {
+        mode = "ELEMENTS",
+        section = self._currentSection,
+        selection = parentSelection
+    })
+
+    self:_transition(function()
+        self:_renderDropdown(el)
+    end)
 end
 
-for i, v in next, Tabs:GetChildren() do
+function Window:_closeDropdown()
+    local prev = table.remove(self._history)
+    if not prev then return end
 
-if v.Name == "Tab" and v ~= Tab then
-
-TS:Create(v.NameLabel, TI(0.1), {TextColor3 = Theme.TabDefault}):Play()
-
+    self:_transition(function()
+        self:_renderElements(prev.section)
+        self._selectionIndex = prev.selection or 1
+        self:_applyHighlight()
+    end)
 end
 
+function Window:_enterSection(idx)
+    local sec = self._sections[idx]
+    if not sec then return end
+
+    table.insert(self._history, {
+        mode = "SECTIONS",
+        selection = self._selectionIndex
+    })
+
+    self:_transition(function()
+        self:_renderElements(sec)
+    end)
 end
 
-TS:Create(Label, TI(0.1), {TextColor3 = Theme.TabSelected}):Play()
+--============================================================
+-- NAVIGATION
+--============================================================
+function Window:_navUp()
+    self._selectionIndex = self._selectionIndex - 1
 
-self.Selected = Tab
+    if self._mode == "SECTIONS" then
+        self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #self._sections))
+    elseif self._mode == "DROPDOWN" then
+        local el = self._dropdownState and self._dropdownState.element
+        local max = (el and (#el.Options + 1)) or 2
+        self._selectionIndex = clamp(self._selectionIndex, 2, math.max(2, max))
+    else
+        local els = self._currentSection and self._currentSection:_getVisibleElements() or {}
+        self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+    end
 
-FunctionsContainer.Visible = true
-
-end)
-
-
-
-local TabRefresh = function()
-
-FunctionsContainer.CanvasSize = UDim2.new(0, 0, 0, FunctionsLayout.AbsoluteContentSize.Y + 20)
-
+    self:_applyHighlight()
 end
 
+function Window:_navDown()
+    self._selectionIndex = self._selectionIndex + 1
 
+    if self._mode == "SECTIONS" then
+        self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #self._sections))
+    elseif self._mode == "DROPDOWN" then
+        local el = self._dropdownState and self._dropdownState.element
+        local max = (el and (#el.Options + 1)) or 2
+        self._selectionIndex = clamp(self._selectionIndex, 2, math.max(2, max))
+    else
+        local els = self._currentSection and self._currentSection:_getVisibleElements() or {}
+        self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+    end
 
-local DividerLibrary = {}
-
-
-
-DividerLibrary.Divider = function(_, DividerOptions)
-
-DividerOptions = DividerOptions or {}
-
-DividerOptions.Name = DividerOptions.Name or ""
-
-
-
-local Divider = self:Object("Frame", {
-
-Name = "Divider",
-
-Parent = FunctionsContainer,
-
-BackgroundColor3 = Theme.DividerBackground,
-
-Size = UDim2.new(1, -20, 0, 0)
-
-})
-
-
-
-self:Object("Round", Divider)
-
-
-
-local DividerLayout = self:Object("UIListLayout", {
-
-Parent = Divider,
-
-HorizontalAlignment = Enum.HorizontalAlignment.Center,
-
-SortOrder = Enum.SortOrder.LayoutOrder,
-
-Padding = UDim.new(0, 6)
-
-})
-
-
-
-if DividerOptions.Name ~= "" then
-
-local DividerNameLabel = self:Object("TextLabel", {
-
-Parent = Divider,
-
-BackgroundTransparency = 1,
-
-Font = Enum.Font.SourceSansSemibold,
-
-TextColor3 = Theme.DividerText,
-
-Size = UDim2.new(1, -10, 0, 12),
-
-TextSize = 18,
-
-TextXAlignment = Enum.TextXAlignment.Left,
-
-Text = DividerOptions.Name
-
-})
-
+    self:_applyHighlight()
 end
 
+function Window:_navLeft()
+    if self._mode == "DROPDOWN" then
+        self:_navUp()
+        return
+    end
 
+    if self._mode ~= "ELEMENTS" or not self._currentSection then return end
 
-local DividerPadding = self:Object("UIPadding", {
+    local els = self._currentSection:_getVisibleElements()
+    local el  = els[self._selectionIndex]
+    if not el then return end
 
-Parent = Divider,
+    if el.Type == "Slider" then
+        el:_setSliderValueNoRefresh(el.Value - el.Step)
+        if el._uiUpdate then el._uiUpdate() end
+    elseif el.Type == "Toggle" then
+        el:Set(false)
+    elseif el.Type == "Dropdown" then
+        el:SetIndex((el.ValueIndex or 1) - 1)
+    end
 
-PaddingTop = UDim.new(0, 5)
-
-})
-
-
-
-local DividerRefresh = function()
-
-Divider.Size = UDim2.new(1, -20, 0, DividerLayout.AbsoluteContentSize.Y + 10)
-
-TabRefresh()
-
+    self:_applyHighlight()
 end
 
+function Window:_navRight()
+    if self._mode == "DROPDOWN" then
+        self:_navDown()
+        return
+    end
 
+    if self._mode ~= "ELEMENTS" or not self._currentSection then return end
 
-local AddDescriptionTweens = function(Button, Description)
+    local els = self._currentSection:_getVisibleElements()
+    local el  = els[self._selectionIndex]
+    if not el then return end
 
-local ExpandSize = TS:Create(Button, TI(0.15), {Size = UDim2.new(1, -10, 0, 46)})
+    if el.Type == "Slider" then
+        el:_setSliderValueNoRefresh(el.Value + el.Step)
+        if el._uiUpdate then el._uiUpdate() end
+    elseif el.Type == "Toggle" then
+        el:Set(true)
+    elseif el.Type == "Dropdown" then
+        el:SetIndex((el.ValueIndex or 1) + 1)
+    end
 
-local CondenseSize = TS:Create(Button, TI(0.15), {Size = UDim2.new(1, -10, 0, 30)})
-
-
-
-local ShowDescription = TS:Create(Description, TI(0.15), {Position = UDim2.new(0, 0, 0, 18), TextTransparency = 0})
-
-local HideDescription = TS:Create(Description, TI(0.15), {Position = UDim2.new(0, 0, 0, 0), TextTransparency = 1})
-
-
-
-Button.MouseEnter:connect(function()
-
-ShowDescription:Play()
-
-ExpandSize:Play()
-
-while ShowDescription.PlaybackState ~= Enum.PlaybackState.Completed and ExpandSize.PlaybackState ~= Enum.PlaybackState.Completed and RS.RenderStepped:wait() do
-
-DividerRefresh()
-
+    self:_applyHighlight()
 end
 
-end)
+function Window:_navSelect()
+    if self._mode == "SECTIONS" then
+        self:_enterSection(self._selectionIndex)
+        return
+    end
 
+    if self._mode == "ELEMENTS" and self._currentSection then
+        local els = self._currentSection:_getVisibleElements()
+        local el  = els[self._selectionIndex]
+        if not el then return end
 
+        if el.Type == "Button" then
+            el:Activate()
+        elseif el.Type == "Toggle" then
+            el:Set(not el.Value)
+        elseif el.Type == "Dropdown" then
+            self:_openDropdown(el, self._selectionIndex)
+        end
 
-Button.MouseLeave:connect(function()
+        self:_applyHighlight()
+        return
+    end
 
-HideDescription:Play()
+    if self._mode == "DROPDOWN" then
+        local el = self._dropdownState and self._dropdownState.element
+        if not el then return end
 
-CondenseSize:Play()
-
-while RS.RenderStepped:wait() and HideDescription.PlaybackState ~= Enum.PlaybackState.Completed and CondenseSize.PlaybackState ~= Enum.PlaybackState.Completed do
-
-DividerRefresh()
-
+        local idx = clamp(self._selectionIndex - 1, 1, #el.Options)
+        el:SetIndex(idx)
+        self:_closeDropdown()
+    end
 end
 
-end)
+function Window:_navBack()
+    self._hold.up = false
+    self._hold.down = false
+    self._hold.left = false
+    self._hold.right = false
+    self._activeSliderDrag = nil
 
+    if self._mode == "DROPDOWN" then
+        self:_closeDropdown()
+        return
+    end
+
+    local prev = table.remove(self._history)
+    if not prev then
+        self:_transition(function()
+            self:_renderSections()
+        end)
+        return
+    end
+
+    if prev.mode == "SECTIONS" then
+        self:_transition(function()
+            self:_renderSections()
+            self._selectionIndex = prev.selection or 1
+            self:_applyHighlight()
+        end)
+    elseif prev.mode == "ELEMENTS" then
+        self:_transition(function()
+            self:_renderElements(prev.section)
+            self._selectionIndex = prev.selection or 1
+            self:_applyHighlight()
+        end)
+    end
 end
 
-
-
-local AddOptionHoverTweens = function(Button)
-
-local ButtonHover = TS:Create(Button, TI(0.1), {BackgroundColor3 = Theme.OptionHover})
-
-local ButtonClick = TS:Create(Button, TI(0.1), {BackgroundColor3 = Theme.OptionClick})
-
-local ButtonDefault = TS:Create(Button, TI(0.1), {BackgroundColor3 = Theme.OptionBackground})
-
-local Hovered = false
-
-
-
-Button.MouseEnter:connect(function()
-
-Hovered = true
-
-ButtonHover:Play()
-
-end)
-
-
-
-Button.MouseLeave:connect(function()
-
-Hovered = false
-
-ButtonDefault:Play()
-
-end)
-
-
-
-Button.MouseButton1Down:connect(function()
-
-ButtonClick:Play()
-
-UIS.InputEnded:connect(function(inputType)
-
-if inputType.UserInputType == Enum.UserInputType.MouseButton1 then
-
-if Hovered then ButtonHover:Play() else ButtonDefault:Play() end
-
+--============================================================
+-- WINDOW API
+--============================================================
+function Window:IsVisible()
+    return self._root and self._root.Visible or false
 end
 
-end)
+function Window:Show(instant)
+    if self._destroyed then return end
 
-end)
+    self:_attachToCoreGui()
+    self._root.Visible = true
 
+    if self._titleLabel then    self._titleLabel.Text    = self._title    end
+    if self._subtitleLabel then self._subtitleLabel.Text = self._subtitle end
+
+    if #self._sections > 0 then
+        self:_renderSections()
+    else
+        self:_clearList()
+    end
+
+    if instant then
+        self._root.BackgroundTransparency = Theme.PanelBgTransparency
+        for _, d in ipairs(self._root:GetDescendants()) do
+            if d:IsA("TextLabel") or d:IsA("TextButton") then
+                d.TextTransparency = 0
+            elseif d:IsA("UIStroke") and d.Parent == self._root then
+                d.Transparency = Theme.StrokeTransparency
+            end
+        end
+        return
+    end
+
+    local startPos = self._root.Position
+    self._root.Position = startPos + UDim2.fromOffset(-8, 8)
+
+    tween(self._root, TweenSlow, {
+        BackgroundTransparency = Theme.PanelBgTransparency,
+        Position = startPos
+    })
+
+    for _, d in ipairs(self._root:GetDescendants()) do
+        if d:IsA("TextLabel") or d:IsA("TextButton") then
+            tween(d, TweenSlow, {TextTransparency = 0})
+        elseif d:IsA("UIStroke") and d.Parent == self._root then
+            tween(d, TweenSlow, {Transparency = Theme.StrokeTransparency})
+        end
+    end
 end
 
+function Window:Hide(instant)
+    if self._destroyed or not (self._root and self._root.Visible) then return end
 
+    self._hold.up = false; self._hold.down = false
+    self._hold.left = false; self._hold.right = false
+    self._activeSliderDrag = nil
 
-local OptionLibrary = {}
+    if instant then
+        self._root.Visible = false
+        return
+    end
 
+    local endPos = self._root.Position + UDim2.fromOffset(-8, 8)
 
+    tween(self._root, TweenSlow, {
+        BackgroundTransparency = 1,
+        Position = endPos
+    })
 
-OptionLibrary.Button = function(_, ButtonOptions)
+    for _, d in ipairs(self._root:GetDescendants()) do
+        if d:IsA("TextLabel") or d:IsA("TextButton") then
+            tween(d, TweenSlow, {TextTransparency = 1})
+        elseif d:IsA("UIStroke") then
+            tween(d, TweenSlow, {Transparency = 1})
+        end
+    end
 
-ButtonOptions = ButtonOptions or {}
-
-ButtonOptions.Name = ButtonOptions.Name or "Button"
-
-ButtonOptions.Callback = ButtonOptions.Callback or function() end
-
-
-
-local Button = self:Object("MainOptionFrame", Divider)
-
-Button.BackgroundColor3 = Theme.OptionBackground
-
-
-
-self:Object("Round", Button)
-
-
-
-local ButtonLabel = self:Object("OptionLabel", Button)
-
-ButtonLabel.Text = ButtonOptions.Name
-
-ButtonLabel.TextColor3 = Theme.OptionText
-
-
-
-local ButtonPadding = self:Object("UIPadding", {
-
-Parent = ButtonLabel,
-
-PaddingLeft = UDim.new(0, 6)
-
-})
-
-
-
-local Click = self:Object("ImageLabel", {
-
-Name = "Click",
-
-Parent = Button,
-
-AnchorPoint = Vector2.new(1, 0.5),
-
-BackgroundTransparency = 1,
-
-Position = UDim2.new(1, -1, 0, 14),
-
-Size = UDim2.new(0, 28, 0, 28),
-
-Image = "http://www.roblox.com/asset/?id=5837528348",
-
-ImageColor3 = Theme.OptionImage
-
-})
-
-
-
-if ButtonOptions.Description then
-
-local Description = self:Object("OptionDescription", Button)
-
-Description.Text = ButtonOptions.Description
-
-Description.TextColor3 = Theme.OptionDescription
-
-
-
-local DescriptionPadding = self:Object("UIPadding", {
-
-Parent = Description,
-
-PaddingLeft = UDim.new(0, 6)
-
-})
-
-
-
-AddDescriptionTweens(Button, Description)
-
+    task.delay(TweenSlow.Time, function()
+        if self._destroyed then return end
+        if self._root then self._root.Visible = false end
+    end)
 end
 
-
-
-AddOptionHoverTweens(Button)
-
-
-
-Button.MouseButton1Click:connect(function()
-
-pcall(ButtonOptions.Callback)
-
-end)
-
-
-
-DividerRefresh()
-
-
-
-local ButtonLibrary = {}
-
-
-
-ButtonLibrary.HideElement = function()
-
-Button.Visible = false
-
-DividerRefresh()
-
+function Window:Toggle()
+    if self:IsVisible() then
+        self:Hide(false)
+    else
+        self:Show(false)
+    end
 end
 
-
-
-ButtonLibrary.ShowElement = function()
-
-Button.Visible = true
-
-DividerRefresh()
-
+function Window:SetKeybind(keyCode)
+    if typeof(keyCode) == "EnumItem" and keyCode.EnumType == Enum.KeyCode then
+        self._toggleKey = keyCode
+    end
 end
 
+function Window:Destroy()
+    if self._destroyed then return end
+    self._destroyed = true
 
+    for _, c in pairs(self._connections) do
+        safeDisconnect(c)
+    end
 
-ButtonLibrary.Fire = function()
-
-pcall(ButtonOptions.Callback)
-
+    if self._screenGui then
+        self._screenGui:Destroy()
+    end
 end
 
+function Window:AddSection(name)
+    assert(type(name) == "string" and #name > 0, "Section name must be a string")
 
+    if self._sectionByName[name] then
+        return self._sectionByName[name]
+    end
 
-return ButtonLibrary
+    local sec = setmetatable({}, Section)
+    sec._window = self
+    sec.Name = name
+    sec._elements = {}
+    sec._nextId = 0
 
+    table.insert(self._sections, sec)
+    self._sectionByName[name] = sec
+
+    if self:IsVisible() and self._mode == "SECTIONS" then
+        self:_renderSections()
+    end
+
+    return sec
 end
 
+Window.AddTab = Window.AddSection
 
+--============================================================
+-- SECTION API
+--============================================================
+function Section:_newElement(t, text)
+    self._nextId = self._nextId + 1
 
-OptionLibrary.Toggle = function(_, ToggleOptions)
+    local el = setmetatable({}, Element)
+    el.Section = self
+    el.Window = self._window
+    el.Id = self.Name .. "_" .. tostring(self._nextId)
+    el.Type = t
+    el.Text = text or ""
+    el.Visible = true
 
-ToggleOptions = ToggleOptions or {}
-
-ToggleOptions.Name = ToggleOptions.Name or "Toggle"
-
-ToggleOptions.Style = ToggleOptions.Style or 1
-
-ToggleOptions.State = ToggleOptions.State or false
-
-ToggleOptions.Callback = ToggleOptions.Callback or function() end
-
-
-
-local Toggle = self:Object("MainOptionFrame", Divider)
-
-Toggle.BackgroundColor3 = Theme.OptionBackground
-
-Toggle.Name = "Toggle"
-
-
-
-self:Object("Round", Toggle)
-
-
-
-local ToggleLabel = self:Object("OptionLabel", Toggle)
-
-ToggleLabel.Text = ToggleOptions.Name
-
-ToggleLabel.TextColor3 = Theme.OptionText
-
-
-
-self:Object("UIPadding", {
-
-Parent = ToggleLabel,
-
-PaddingLeft = UDim.new(0, 6)
-
-})
-
-
-
-if ToggleOptions.Description then
-
-local Description = self:Object("OptionDescription", Toggle)
-
-Description.Text = ToggleOptions.Description
-
-Description.TextColor3 = Theme.OptionDescription
-
-
-
-local DescriptionPadding = self:Object("UIPadding", {
-
-Parent = Description,
-
-PaddingLeft = UDim.new(0, 6)
-
-})
-
-
-
-AddDescriptionTweens(Toggle, Description)
-
+    return el
 end
 
-
-
-local ToggleFunction = nil
-
-
-
-if ToggleOptions.Style == 1 then
-
-local Colour = self:Object("Frame", {
-
-Name = "Colour",
-
-Parent = Toggle,
-
-AnchorPoint = Vector2.new(1, 0),
-
-BackgroundColor3 = (ToggleOptions.State and Theme.ToggleTrue) or Theme.ToggleFalse,
-
-Position = UDim2.new(1, -4, 0, 4),
-
-Size = UDim2.new(0, 40, 0, 22)
-
-})
-
-
-
-self:Object("Round", Colour)
-
-
-
-local Sliding = self:Object("Frame", {
-
-Parent = Colour,
-
-AnchorPoint = Vector2.new(0, 0.5),
-
-BackgroundColor3 = Theme.ToggleIndicator,
-
-Position = (ToggleOptions.State and UDim2.new(1, -22, 0.5, 0)) or UDim2.new(0, 2, 0.5, 0),
-
-Size = UDim2.new(0.5, -2, 1, -4),
-
-ZIndex = 2
-
-})
-
-
-
-self:Object("Round", Sliding)
-
-
-
-local SlidingToFalse = TS:Create(Sliding, TI(0.15), {Position = UDim2.new(0, 2, 0.5, 0)})
-
-local ColourToFalse = TS:Create(Colour, TI(0.15), {BackgroundColor3 = Theme.ToggleFalse})
-
-local SlidingToTrue = TS:Create(Sliding, TI(0.15), {Position = UDim2.new(1, -20, 0.5, 0)})
-
-local ColourToTrue = TS:Create(Colour, TI(0.15), {BackgroundColor3 = Theme.ToggleTrue})
-
-
-
-ToggleFunction = function(State)
-
-spawn(function()
-
-local S, E = pcall(ToggleOptions.Callback, State)
-
-if not S then print(E) end
-
-end)
-
-if State then
-
-SlidingToTrue:Play()
-
-ColourToTrue:Play()
-
-else
-
-SlidingToFalse:Play()
-
-ColourToFalse:Play()
-
+function Section:_getVisibleElements()
+    local out = {}
+    for _, el in ipairs(self._elements) do
+        if el.Visible ~= false then
+            table.insert(out, el)
+        end
+    end
+    return out
 end
 
+function Section:_refreshIfOpen()
+    local w = self._window
+    if w and w:IsVisible() and w._mode == "ELEMENTS" and w._currentSection == self then
+        w:_renderElements(self)
+    end
 end
 
-
-
-Toggle.MouseButton1Click:connect(function()
-
-ToggleOptions.State = not ToggleOptions.State
-
-ToggleFunction(ToggleOptions.State)
-
-end)
-
-elseif ToggleOptions.Style == 2 then
-
-local Colour = self:Object("Frame", {
-
-Name = "Colour",
-
-Parent = Toggle,
-
-AnchorPoint = Vector2.new(1, 0),
-
-BackgroundColor3 = ToggleOptions.State and Theme.ToggleTrue or Theme.ToggleFalse,
-
-Position = UDim2.new(1, -4, 0, 4),
-
-Size = UDim2.new(0, Toggle.AbsoluteSize.Y - 8, 0, 22)
-
-})
-
-
-
-self:Object("Round", Colour)
-
-
-
-local Frame1 = self:Object("Frame", {
-
-Parent = Colour,
-
-Size = UDim2.new(0, 4, 0, 18),
-
-BorderSizePixel = 0,
-
-Rotation = 45,
-
-AnchorPoint = Vector2.new(0.5, 0.5),
-
-Position = UDim2.new(0.5, 0, 0.5, 0),
-
-BackgroundColor3 = Theme.ToggleIndicator
-
-})
-
-
-
-local Frame1Round = self:Object("Round", Frame1)
-
-Frame1Round.CornerRadius = UDim.new(0, 2)
-
-
-
-local Frame2 = self:Object("Frame", {
-
-Parent = Colour,
-
-Size = UDim2.new(0, 4, 0, 18),
-
-BorderSizePixel = 0,
-
-Rotation = 135,
-
-AnchorPoint = Vector2.new(0.5, 0.5),
-
-Position = UDim2.new(0.5, 0, 0.5, 0),
-
-BackgroundColor3 = Theme.ToggleIndicator
-
-})
-
-
-
-local Frame2Round = self:Object("Round", Frame2)
-
-Frame2Round.CornerRadius = UDim.new(0, 2)
-
-
-
-local ColourToFalse = TS:Create(Colour, TI(0.15), {BackgroundColor3 = Theme.ToggleFalse})
-
-local ColourToTrue = TS:Create(Colour, TI(0.15), {BackgroundColor3 = Theme.ToggleTrue})
-
-local Frame1ToFalse = TS:Create(Frame1, TI(0.15), {Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0, 5, 0, 18)})
-
-local Frame2ToFalse = TS:Create(Frame2, TI(0.15), {Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0, 5, 0, 18)})
-
-local Frame1ToTrue = TS:Create(Frame1, TI(0.15), {Position = UDim2.new(0.65, 0, 0.5, 0), Size = UDim2.new(0, 5, 0, 16)})
-
-local Frame2ToTrue = TS:Create(Frame2, TI(0.15), {Position = UDim2.new(0.35, 0, 0.5, 2), Size = UDim2.new(0, 5, 0, 11)})
-
-ToggleFunction = function(State)
-
-spawn(function()
-
-pcall(ToggleOptions.Callback, State)
-
-end)
-
-if State then
-
-ColourToTrue:Play()
-
-Frame1ToTrue:Play()
-
-Frame2ToTrue:Play()
-
-
-
-else
-
-ColourToFalse:Play()
-
-Frame1ToFalse:Play()
-
-Frame2ToFalse:Play()
-
+function Section:AddLabel(text)
+    local el = self:_newElement("Label", text)
+    table.insert(self._elements, el)
+    self:_refreshIfOpen()
+    return el
 end
 
+function Section:AddButton(text, cb)
+    local el = self:_newElement("Button", text)
+    el.Callback = type(cb) == "function" and cb or function() end
+    table.insert(self._elements, el)
+    self:_refreshIfOpen()
+    return el
 end
 
-
-
-Toggle.MouseButton1Click:connect(function()
-
-ToggleOptions.State = not ToggleOptions.State
-
-ToggleFunction(ToggleOptions.State)
-
-end)
-
+function Section:AddToggle(text, default, cb)
+    local el = self:_newElement("Toggle", text)
+    el.Value = (default == true)
+    el.Callback = type(cb) == "function" and cb or function(_) end
+    table.insert(self._elements, el)
+    self:_refreshIfOpen()
+    return el
 end
 
-
-
-AddOptionHoverTweens(Toggle)
-
-
-
-DividerRefresh()
-
-
-
-local ToggleLibrary = {}
-
-
-
-ToggleLibrary.Toggle = function()
-
-ToggleOptions.State = not ToggleOptions.State
-
-ToggleFunction(ToggleOptions.State)
-
+function Section:AddSlider(text, min, max, step, default, cb)
+    local el = self:_newElement("Slider", text)
+    el.Min = tonumber(min) or 0
+    el.Max = tonumber(max) or 100
+    el.Step = tonumber(step) or 1
+    el.Value = clamp(roundToStep(tonumber(default) or el.Min, el.Step), el.Min, el.Max)
+    el.Callback = type(cb) == "function" and cb or function(_) end
+    table.insert(self._elements, el)
+    self:_refreshIfOpen()
+    return el
 end
 
-
-
-ToggleLibrary.SetState = function(_, State)
-
-ToggleFunction(State)
-
-ToggleOptions.State = State
-
+function Section:AddDropdown(text, options, defaultIndex, cb)
+    local el = self:_newElement("Dropdown", text)
+    el.Options = type(options) == "table" and options or {}
+    el.ValueIndex = clamp(tonumber(defaultIndex) or 1, 1, math.max(1, #el.Options))
+    el.Callback = type(cb) == "function" and cb or function(_, _) end
+    table.insert(self._elements, el)
+    self:_refreshIfOpen()
+    return el
 end
 
-
-
-ToggleLibrary.GetState = function()
-
-return ToggleOptions.State
-
+--============================================================
+-- ELEMENT API
+--============================================================
+function Element:SetVisible(b)
+    self.Visible = (b == true)
+    self.Section:_refreshIfOpen()
 end
 
-
-
-ToggleLibrary.HideElement = function()
-
-Toggle.Visible = false
-
-DividerRefresh()
-
+function Element:Activate()
+    if self.Type == "Button" and self.Callback then
+        task.spawn(self.Callback)
+    end
 end
 
+function Element:_setSliderValueNoRefresh(v)
+    if self.Type ~= "Slider" then return end
 
+    local nv = clamp(roundToStep(tonumber(v) or self.Value, self.Step), self.Min, self.Max)
+    if nv == self.Value then return end
 
-ToggleLibrary.ShowElement = function()
-
-Toggle.Visible = true
-
-DividerRefresh()
-
+    self.Value = nv
+    if self.Callback then
+        task.spawn(self.Callback, self.Value)
+    end
 end
 
+function Element:Set(v)
+    if self.Type == "Toggle" then
+        self.Value = (v == true)
+        if self.Callback then task.spawn(self.Callback, self.Value) end
+        self.Section:_refreshIfOpen()
 
+    elseif self.Type == "Slider" then
+        self:_setSliderValueNoRefresh(v)
+        if self._uiUpdate then self._uiUpdate() end
 
-return ToggleLibrary
-
+    elseif self.Type == "Dropdown" then
+        self:SetIndex(v)
+    end
 end
 
+function Element:SetIndex(i)
+    if self.Type ~= "Dropdown" then return end
 
+    local idx = clamp(tonumber(i) or self.ValueIndex, 1, math.max(1, #self.Options))
+    self.ValueIndex = idx
 
-OptionLibrary.ToggleDropdown = function(_, ToggleDropdownOptions)
+    if self.Callback then
+        task.spawn(self.Callback, self.Options[idx], idx)
+    end
 
-ToggleDropdownOptions = ToggleDropdownOptions or
+    self.Section:_refreshIfOpen()
+end
+
+-- Fine del codice
+return Library
