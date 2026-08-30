@@ -54,6 +54,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
+local ContextActionService = game:GetService("ContextActionService")
 
 local __UID = "UI_" .. HttpService:GenerateGUID(false)
 local __TAG = "__UI_STABLE_TAG_GTA_MENU"
@@ -149,26 +150,26 @@ local Theme = {
 	Text = Color3.fromRGB(235, 235, 235),
 	MutedText = Color3.fromRGB(150, 150, 150),
 
-	Stroke = Color3.fromRGB(255, 140, 0),
+	Stroke = Color3.fromRGB(190, 150, 255),
 	StrokeTransparency = 0.45,
 
-	Glow = Color3.fromRGB(255, 140, 0),
+	Glow = Color3.fromRGB(190, 150, 255),
 	GlowTransparency = 0.94,
 
-	HighlightBg = Color3.fromRGB(255, 140, 0),
+	HighlightBg = Color3.fromRGB(190, 150, 255),
 	HighlightTransparency = 0.72,
-	HighlightBar = Color3.fromRGB(255, 140, 0),
+	HighlightBar = Color3.fromRGB(190, 150, 255),
 
-	Accent = Color3.fromRGB(255, 140, 0),
+	Accent = Color3.fromRGB(190, 150, 255),
 
 	SliderTrack = Color3.fromRGB(28, 28, 30),
-	SliderFill = Color3.fromRGB(255, 140, 0),
+	SliderFill = Color3.fromRGB(190, 150, 255),
 
 	NotifBg = Color3.fromRGB(6, 6, 7),
-	NotifStroke = Color3.fromRGB(255, 140, 0),
-	NotifShadow = Color3.fromRGB(255, 140, 0),
+	NotifStroke = Color3.fromRGB(190, 150, 255),
+	NotifShadow = Color3.fromRGB(190, 150, 255),
 
-	Info = Color3.fromRGB(255, 140, 0),
+	Info = Color3.fromRGB(190, 150, 255),
 	Success = Color3.fromRGB(140, 220, 140),
 	Warning = Color3.fromRGB(255, 210, 90),
 	Error = Color3.fromRGB(230, 70, 70),
@@ -178,7 +179,7 @@ local TweenFast = TweenInfo.new(0.06, Enum.EasingStyle.Linear, Enum.EasingDirect
 local TweenMed  = TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TweenSlow = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-local TweenNotifIn  = TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenNotifIn  = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local TweenNotifOut = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 local Window = {}
@@ -220,6 +221,7 @@ function Library:CreateWindow(opts)
 	window._dropdownState = nil
 
 	window._toggleKey = Enum.KeyCode.F8
+	window._accent = Theme.Accent
 	window._connections = {}
 	window._destroyed = false
 	window._rowRefs = {}
@@ -315,6 +317,10 @@ function Window:_buildUI()
 				self._titleLabel = self._header and self._header:FindFirstChild("Title", true) or nil
 				self._subtitleLabel = self._header and self._header:FindFirstChild("Subtitle", true) or nil
 				self._hint = existingRoot:FindFirstChild("Hint", true)
+				self._rootStroke = existingRoot:FindFirstChildOfClass("UIStroke")
+				self._topBar = self._header and self._header:FindFirstChild("TopBar", true)
+				local existingGlow = existingRoot:FindFirstChild("Glow", true)
+				self._glowStroke = existingGlow and existingGlow:FindFirstChildOfClass("UIStroke")
 
 				if self._dragZone and self._root then
 					self:_enableDragFromZone(true)
@@ -345,8 +351,8 @@ function Window:_buildUI()
 	root.Parent = sg
 	self._root = root
 
-	create("UIStroke", {
-		Color = Theme.Stroke,
+	self._rootStroke = create("UIStroke", {
+		Color = self._accent,
 		Thickness = 1,
 		Transparency = Theme.StrokeTransparency,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
@@ -362,8 +368,8 @@ function Window:_buildUI()
 		ZIndex = root.ZIndex - 1,
 	})
 	glow.Parent = root
-	create("UIStroke", {
-		Color = Theme.Glow,
+	self._glowStroke = create("UIStroke", {
+		Color = self._accent,
 		Thickness = 1,
 		Transparency = Theme.GlowTransparency,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
@@ -381,13 +387,14 @@ function Window:_buildUI()
 
 	local topBar = create("Frame", {
 		Name = "TopBar",
-		BackgroundColor3 = Theme.Accent,
+		BackgroundColor3 = self._accent,
 		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, 2),
 		Position = UDim2.fromOffset(0, 0),
 	})
 	topBar.Parent = header
+	self._topBar = topBar
 
 	local dragZone = create("TextButton", {
 		Name = "DragZone",
@@ -406,8 +413,8 @@ function Window:_buildUI()
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, 24),
 		Position = UDim2.fromOffset(0, 10),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 18,
+		Font = Enum.Font.Highway,
+		TextSize = 20,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.Text,
 		Text = string.upper(self._title),
@@ -424,7 +431,7 @@ function Window:_buildUI()
 		Font = Enum.Font.RobotoMono,
 		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Theme.Accent,
+		TextColor3 = self._accent,
 		Text = self._subtitle,
 		ZIndex = 70,
 	})
@@ -433,7 +440,7 @@ function Window:_buildUI()
 
 	local divider = create("Frame", {
 		Name = "Divider",
-		BackgroundColor3 = Theme.Stroke,
+		BackgroundColor3 = self._accent,
 		BackgroundTransparency = 0.6,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, 1),
@@ -456,7 +463,7 @@ function Window:_buildUI()
 		Size = UDim2.new(1, 0, 1, 0),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		ScrollBarThickness = 2,
-		ScrollBarImageColor3 = Theme.Accent,
+		ScrollBarImageColor3 = self._accent,
 		ScrollBarImageTransparency = 0.2,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 	})
@@ -539,11 +546,11 @@ function Window:_buildNotifications()
 	self._notif._layout = list
 end
 
-local function _typeColor(t)
+function Window:_typeColor(t)
 	if t == "Success" then return Theme.Success end
 	if t == "Warning" then return Theme.Warning end
 	if t == "Error" then return Theme.Error end
-	return Theme.Info
+	return self._accent
 end
 
 function Window:_notifRemoveOldestIfNeeded()
@@ -609,7 +616,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 	fr.Parent = self._notif.container
 
 	local st = create("UIStroke", {
-		Color = Theme.NotifStroke,
+		Color = self._accent,
 		Thickness = 1,
 		Transparency = 0.35,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
@@ -618,7 +625,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 
 	local accent = create("Frame", {
 		Name = "Accent",
-		BackgroundColor3 = _typeColor(ntype),
+		BackgroundColor3 = self:_typeColor(ntype),
 		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		Size = UDim2.new(0, 3, 1, 0),
@@ -700,7 +707,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 
 	if isPrompt then
 		local yes = create("TextButton", {
-			BackgroundColor3 = Theme.Accent,
+			BackgroundColor3 = self._accent,
 			BackgroundTransparency = 0.05,
 			BorderSizePixel = 0,
 			Size = UDim2.fromOffset(96, 26),
@@ -756,6 +763,8 @@ function Window:_createNotification(opts, isPrompt, cb)
 		end)
 	end
 
+	local settlePos = fr.Position
+	fr.Position = settlePos + UDim2.fromOffset(26, 0)
 	fr.BackgroundTransparency = 1
 	st.Transparency = 1
 
@@ -765,7 +774,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 		end
 	end
 
-	tween(fr, TweenNotifIn, {BackgroundTransparency = 0.04})
+	tween(fr, TweenNotifIn, {BackgroundTransparency = 0.04, Position = settlePos})
 	tween(st, TweenNotifIn, {Transparency = 0.35})
 
 	for _, d in ipairs(fr:GetDescendants()) do
@@ -906,6 +915,50 @@ function Window:_bindInput()
 			self._hold.right = false
 		end
 	end)
+
+	self._arrowActionName = "UI_ArrowNav_" .. HttpService:GenerateGUID(false)
+	ContextActionService:BindActionAtPriority(
+		self._arrowActionName,
+		function(_, inputState, inputObject)
+			if self._destroyed then return Enum.ContextActionResult.Pass end
+			if not self:IsVisible() then return Enum.ContextActionResult.Pass end
+
+			local keyCode = inputObject.KeyCode
+			if inputState == Enum.UserInputState.Begin then
+				if keyCode == Enum.KeyCode.Up then
+					self._hold.up = true
+					self:_navUp()
+				elseif keyCode == Enum.KeyCode.Down then
+					self._hold.down = true
+					self:_navDown()
+				elseif keyCode == Enum.KeyCode.Left then
+					self._hold.left = true
+					self:_navLeft()
+				elseif keyCode == Enum.KeyCode.Right then
+					self._hold.right = true
+					self:_navRight()
+				end
+			elseif inputState == Enum.UserInputState.End then
+				if keyCode == Enum.KeyCode.Up then
+					self._hold.up = false
+				elseif keyCode == Enum.KeyCode.Down then
+					self._hold.down = false
+				elseif keyCode == Enum.KeyCode.Left then
+					self._hold.left = false
+				elseif keyCode == Enum.KeyCode.Right then
+					self._hold.right = false
+				end
+			end
+
+			return Enum.ContextActionResult.Sink
+		end,
+		false,
+		Enum.ContextActionPriority.High.Value + 1000,
+		Enum.KeyCode.Up,
+		Enum.KeyCode.Down,
+		Enum.KeyCode.Left,
+		Enum.KeyCode.Right
+	)
 end
 
 function Window:_startHoldLoop()
@@ -1033,7 +1086,7 @@ function Window:_makeRow(order, isHeader, thin)
 	btn.Parent = row
 
 	local hl = create("Frame", {
-		BackgroundColor3 = Theme.HighlightBg,
+		BackgroundColor3 = self._accent,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 1, 0),
@@ -1042,7 +1095,7 @@ function Window:_makeRow(order, isHeader, thin)
 	hl.Parent = row
 
 	local bar = create("Frame", {
-		BackgroundColor3 = Theme.HighlightBar,
+		BackgroundColor3 = self._accent,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Size = UDim2.new(0, 3, 1, 0),
@@ -1058,7 +1111,7 @@ function Window:_makeRow(order, isHeader, thin)
 		Position = UDim2.fromOffset(6, 0),
 		Font = Enum.Font.RobotoMono,
 		TextSize = thin and 11 or 13,
-		TextColor3 = Theme.Accent,
+		TextColor3 = self._accent,
 		TextTransparency = 1,
 		Text = ">",
 		ZIndex = 4,
@@ -1068,7 +1121,7 @@ function Window:_makeRow(order, isHeader, thin)
 	local title = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -114, 1, 0),
-		Position = UDim2.fromOffset(22, thin and 0 or -6),
+		Position = UDim2.fromOffset(22, 0),
 		Font = Enum.Font.RobotoMono,
 		TextSize = isHeader and 12 or (thin and 11 or 13),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -1093,7 +1146,7 @@ function Window:_makeRow(order, isHeader, thin)
 	right.Parent = row
 
 	local stroke = create("UIStroke", {
-		Color = Theme.Accent,
+		Color = self._accent,
 		Thickness = 1,
 		Transparency = 1,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
@@ -1157,18 +1210,43 @@ function Window:_ensureSelectionVisible()
 	end
 end
 
+function Window:_applyContentHeight(rowHeights)
+	if not self._root then return end
+
+	local spacing = 2
+	local paddingTop = 4
+	local paddingBottom = 24
+
+	local sum = paddingTop + paddingBottom
+	for i, h in ipairs(rowHeights) do
+		sum += h
+		if i > 1 then sum += spacing end
+	end
+
+	local minRoot = 168
+	local maxRoot = 392
+	local rootHeight = clamp(sum + 92, minRoot, maxRoot)
+
+	local target = UDim2.fromOffset(340, rootHeight)
+	if self._root.Size == target then return end
+
+	tween(self._root, TweenMed, {Size = target})
+end
+
 function Window:_renderSections()
 	self:_clearList()
 	self._mode = "SECTIONS"
 	self._currentSection = nil
 	self._dropdownState = nil
 
+	local rowHeights = {}
 	for i, sec in ipairs(self._sections) do
 		local row = self:_makeRow(i, false, true)
 		row.Parent = self._list
 		local r = self._rowRefs[row]
 		r.title.Text = string.upper(sec.Name)
 		r.right.Text = ">"
+		table.insert(rowHeights, 24)
 
 		r.btn.MouseButton1Click:Connect(function()
 			self._selectionIndex = i
@@ -1177,6 +1255,7 @@ function Window:_renderSections()
 		end)
 	end
 
+	self:_applyContentHeight(rowHeights)
 	self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #self._sections))
 	self:_applyHighlight()
 end
@@ -1211,7 +1290,7 @@ function Window:_renderElements(section)
 		elseif el.Type == "Toggle" then
 			local function applyToggleUI()
 				r.right.Text = el.Value and "ON" or "OFF"
-				r.right.TextColor3 = el.Value and Theme.Accent or Theme.MutedText
+				r.right.TextColor3 = el.Value and self._accent or Theme.MutedText
 			end
 			applyToggleUI()
 
@@ -1242,7 +1321,7 @@ function Window:_renderElements(section)
 			track.Parent = wrap
 
 			local fill = create("Frame", {
-				BackgroundColor3 = Theme.SliderFill,
+				BackgroundColor3 = self._accent,
 				BackgroundTransparency = 0,
 				BorderSizePixel = 0,
 				Size = UDim2.new(0, 0, 1, 0),
@@ -1288,6 +1367,7 @@ function Window:_renderElements(section)
 	end
 
 	self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
+	self:_applyContentHeight(table.create(#els, 36))
 	self:_applyHighlight()
 end
 
@@ -1316,6 +1396,9 @@ function Window:_renderDropdown(el)
 	end
 
 	self._selectionIndex = clamp((el.ValueIndex or 1) + 1, 2, math.max(2, #el.Options + 1))
+	local ddHeights = {22}
+	for _ = 1, #el.Options do table.insert(ddHeights, 36) end
+	self:_applyContentHeight(ddHeights)
 	self:_applyHighlight()
 end
 
@@ -1574,10 +1657,31 @@ function Window:SetKeybind(keyCode)
 	end
 end
 
+function Window:SetAccent(color3)
+	if self._destroyed then return end
+	if typeof(color3) ~= "Color3" then return end
+	self._accent = color3
+
+	if self._rootStroke then self._rootStroke.Color = color3 end
+	if self._glowStroke then self._glowStroke.Color = color3 end
+	if self._topBar then self._topBar.BackgroundColor3 = color3 end
+	if self._subtitleLabel then self._subtitleLabel.TextColor3 = color3 end
+	if self._list then self._list.ScrollBarImageColor3 = color3 end
+
+	if self._mode == "SECTIONS" then
+		self:_renderSections()
+	elseif self._mode == "ELEMENTS" and self._currentSection then
+		self:_renderElements(self._currentSection)
+	elseif self._mode == "DROPDOWN" and self._dropdownState and self._dropdownState.element then
+		self:_renderDropdown(self._dropdownState.element)
+	end
+end
+
 function Window:Destroy()
 	if self._destroyed then return end
 	self._destroyed = true
 	for _, c in pairs(self._connections) do safeDisconnect(c) end
+	if self._arrowActionName then ContextActionService:UnbindAction(self._arrowActionName) end
 	if self._screenGui then self._screenGui:Destroy() end
 end
 
