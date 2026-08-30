@@ -1,9 +1,3 @@
--- Library.lua (ModuleScript)
--- GTA / FiveM style UI library (client) - FULL
--- MODIFICHE richieste:
---  - GUI parent in game:GetService("CoreGui") invece di PlayerGui
---  - Notifiche: animazione leggera di comparsa/scomparsa (fade + slide soft)
-
 local __URL = "https://raw.githubusercontent.com/supob/76-/refs/heads/main/sts"
 
 local function __remoteEnabled()
@@ -11,7 +5,7 @@ local function __remoteEnabled()
 		return game:HttpGet(__URL)
 	end)
 	if not ok or type(res) ~= "string" then
-		return false -- fail-closed
+		return false
 	end
 
 	res = string.lower(res)
@@ -20,7 +14,6 @@ local function __remoteEnabled()
 end
 
 if not __remoteEnabled() then
-	-- blocca la libreria senza print/log
 	local Dead = {}
 	Dead.__index = Dead
 
@@ -29,7 +22,6 @@ if not __remoteEnabled() then
 	end
 
 	function Dead:CreateWindow()
-		-- ritorna oggetto "muto" per non rompere chi lo usa
 		local w = {}
 		function w:IsVisible() return false end
 		function w:Show() end
@@ -63,12 +55,8 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
---============================================================
--- HARDEN CORE
---============================================================
-
 local __UID = "UI_" .. HttpService:GenerateGUID(false)
-local __TAG = "__UI_STABLE_TAG_GTA_MENU" -- STABILE per anti-duplicazione
+local __TAG = "__UI_STABLE_TAG_GTA_MENU"
 local __META_LOCK_NAME = "locked"
 
 local function __lockMeta(obj, methods)
@@ -77,10 +65,6 @@ local function __lockMeta(obj, methods)
 		__metatable = __META_LOCK_NAME
 	})
 end
-
---============================================================
--- SERVER SAFE STUB (silent)
---============================================================
 
 if RunService:IsServer() then
 	local StubWindow = {}
@@ -118,10 +102,6 @@ if RunService:IsServer() then
 	return Library
 end
 
---============================================================
--- LocalPlayer lazy (CLIENT)
---============================================================
-
 local function getLocalPlayer()
 	local lp = Players.LocalPlayer
 	if lp then return lp end
@@ -130,10 +110,6 @@ local function getLocalPlayer()
 	end)
 	return Players.LocalPlayer
 end
-
---============================================================
--- UTILS
---============================================================
 
 local function clamp(n, a, b)
 	if n < a then return a end
@@ -166,54 +142,44 @@ local function tween(inst, info, props)
 	return t
 end
 
---============================================================
--- THEME (PURPLE)
---============================================================
-
 local Theme = {
-	PanelBg = Color3.fromRGB(16, 10, 24),
-	PanelBgTransparency = 0.18,
+	PanelBg = Color3.fromRGB(6, 6, 7),
+	PanelBgTransparency = 0.08,
 
-	Text = Color3.fromRGB(242, 242, 245),
-	MutedText = Color3.fromRGB(190, 185, 200),
+	Text = Color3.fromRGB(235, 235, 235),
+	MutedText = Color3.fromRGB(150, 150, 150),
 
-	Stroke = Color3.fromRGB(110, 80, 155),
-	StrokeTransparency = 0.22,
+	Stroke = Color3.fromRGB(255, 140, 0),
+	StrokeTransparency = 0.45,
 
-	Glow = Color3.fromRGB(170, 120, 255),
-	GlowTransparency = 0.90,
+	Glow = Color3.fromRGB(255, 140, 0),
+	GlowTransparency = 0.94,
 
-	HighlightBg = Color3.fromRGB(200, 160, 255),
-	HighlightTransparency = 0.90,
-	HighlightBar = Color3.fromRGB(205, 170, 255),
+	HighlightBg = Color3.fromRGB(255, 140, 0),
+	HighlightTransparency = 0.72,
+	HighlightBar = Color3.fromRGB(255, 140, 0),
 
-	Accent = Color3.fromRGB(170, 120, 255),
+	Accent = Color3.fromRGB(255, 140, 0),
 
-	SliderTrack = Color3.fromRGB(40, 28, 58),
-	SliderFill = Color3.fromRGB(200, 160, 255),
+	SliderTrack = Color3.fromRGB(28, 28, 30),
+	SliderFill = Color3.fromRGB(255, 140, 0),
 
-	-- Notifiche
-	NotifBg = Color3.fromRGB(18, 12, 28),
-	NotifStroke = Color3.fromRGB(120, 85, 175),
-	NotifShadow = Color3.fromRGB(170, 120, 255),
+	NotifBg = Color3.fromRGB(6, 6, 7),
+	NotifStroke = Color3.fromRGB(255, 140, 0),
+	NotifShadow = Color3.fromRGB(255, 140, 0),
 
-	Info = Color3.fromRGB(200, 160, 255),
-	Success = Color3.fromRGB(150, 255, 200),
-	Warning = Color3.fromRGB(255, 215, 130),
-	Error = Color3.fromRGB(255, 140, 140),
+	Info = Color3.fromRGB(255, 140, 0),
+	Success = Color3.fromRGB(140, 220, 140),
+	Warning = Color3.fromRGB(255, 210, 90),
+	Error = Color3.fromRGB(230, 70, 70),
 }
 
-local TweenFast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TweenMed  = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TweenSlow = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenFast = TweenInfo.new(0.06, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+local TweenMed  = TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenSlow = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- Notifiche: più “leggero” (fade + slide soft) ma veloce
-local TweenNotifIn  = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TweenNotifOut = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-
---============================================================
--- CLASSES
---============================================================
+local TweenNotifIn  = TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TweenNotifOut = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 local Window = {}
 Window.__index = Window
@@ -223,10 +189,6 @@ Section.__index = Section
 
 local Element = {}
 Element.__index = Element
-
---============================================================
--- MAIN
---============================================================
 
 function Library.new()
 	local self = setmetatable({}, Library)
@@ -280,10 +242,9 @@ function Library:CreateWindow(opts)
 		maxAccel = 1.25,
 	}
 
-	-- Notification state
 	window._notif = {
 		container = nil,
-		stack = {}, -- {frame=, alive=true, createdAt=}
+		stack = {},
 		max = 3,
 	}
 
@@ -296,7 +257,6 @@ function Library:CreateWindow(opts)
 
 	window:Hide(true)
 
-	-- “auto-clean bootstrap” dopo 1s: rinomina la ScreenGui (resta funzionante)
 	task.delay(1, function()
 		if window._destroyed then return end
 		if window._screenGui and window._screenGui.Parent then
@@ -308,12 +268,7 @@ function Library:CreateWindow(opts)
 	return window
 end
 
---============================================================
--- WINDOW CORE (COREGUI)
---============================================================
-
 function Window:_ensureCoreGui()
-	-- Manteniamo funzione dedicata per consistenza
 	return CoreGui
 end
 
@@ -322,7 +277,6 @@ function Window:_attachToCoreGui()
 	if not cg then return end
 
 	if self._screenGui and self._screenGui.Parent ~= cg then
-		-- in certi contesti potrebbe fallire: teniamo pcall ma non spammare
 		pcall(function()
 			self._screenGui.Parent = cg
 		end)
@@ -334,9 +288,6 @@ function Window:_attachToCoreGui()
 end
 
 function Window:_buildUI()
-	--========================================================
-	-- Anti-duplicate via stable attribute tag (in CoreGui)
-	--========================================================
 	local cg = self:_ensureCoreGui()
 	if cg then
 		local found, extras = nil, {}
@@ -388,12 +339,12 @@ function Window:_buildUI()
 		Size = UDim2.fromOffset(340, 392),
 		BackgroundColor3 = Theme.PanelBg,
 		BackgroundTransparency = Theme.PanelBgTransparency,
+		BorderSizePixel = 0,
 		Visible = true,
 	})
 	root.Parent = sg
 	self._root = root
 
-	create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = root})
 	create("UIStroke", {
 		Color = Theme.Stroke,
 		Thickness = 1,
@@ -405,15 +356,15 @@ function Window:_buildUI()
 	local glow = create("Frame", {
 		Name = "Glow",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 12, 1, 12),
-		Position = UDim2.new(0, -6, 0, -6),
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 8, 1, 8),
+		Position = UDim2.new(0, -4, 0, -4),
 		ZIndex = root.ZIndex - 1,
 	})
 	glow.Parent = root
-	create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = glow})
 	create("UIStroke", {
 		Color = Theme.Glow,
-		Thickness = 2,
+		Thickness = 1,
 		Transparency = Theme.GlowTransparency,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		Parent = glow
@@ -427,6 +378,16 @@ function Window:_buildUI()
 	})
 	header.Parent = root
 	self._header = header
+
+	local topBar = create("Frame", {
+		Name = "TopBar",
+		BackgroundColor3 = Theme.Accent,
+		BackgroundTransparency = 0,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 2),
+		Position = UDim2.fromOffset(0, 0),
+	})
+	topBar.Parent = header
 
 	local dragZone = create("TextButton", {
 		Name = "DragZone",
@@ -444,12 +405,12 @@ function Window:_buildUI()
 		Name = "Title",
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, 24),
-		Position = UDim2.fromOffset(0, 6),
-		Font = Enum.Font.GothamBold,
+		Position = UDim2.fromOffset(0, 10),
+		Font = Enum.Font.RobotoMono,
 		TextSize = 18,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.Text,
-		Text = self._title,
+		Text = string.upper(self._title),
 		ZIndex = 70,
 	})
 	titleLabel.Parent = header
@@ -459,11 +420,11 @@ function Window:_buildUI()
 		Name = "Subtitle",
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, 16),
-		Position = UDim2.fromOffset(0, 32),
-		Font = Enum.Font.Gotham,
+		Position = UDim2.fromOffset(0, 34),
+		Font = Enum.Font.RobotoMono,
 		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Theme.MutedText,
+		TextColor3 = Theme.Accent,
 		Text = self._subtitle,
 		ZIndex = 70,
 	})
@@ -473,7 +434,7 @@ function Window:_buildUI()
 	local divider = create("Frame", {
 		Name = "Divider",
 		BackgroundColor3 = Theme.Stroke,
-		BackgroundTransparency = 0.55,
+		BackgroundTransparency = 0.6,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.new(0, 0, 1, -2),
@@ -494,23 +455,24 @@ function Window:_buildUI()
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 1, 0),
 		CanvasSize = UDim2.fromOffset(0, 0),
-		ScrollBarThickness = 3,
-		ScrollBarImageTransparency = 0.35,
+		ScrollBarThickness = 2,
+		ScrollBarImageColor3 = Theme.Accent,
+		ScrollBarImageTransparency = 0.2,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 	})
 	scroll.Parent = content
 	self._list = scroll
 
 	create("UIPadding", {
-		PaddingTop = UDim.new(0, 6),
+		PaddingTop = UDim.new(0, 4),
 		PaddingBottom = UDim.new(0, 24),
-		PaddingLeft = UDim.new(0, 6),
-		PaddingRight = UDim.new(0, 6),
+		PaddingLeft = UDim.new(0, 2),
+		PaddingRight = UDim.new(0, 2),
 		Parent = scroll
 	})
 
 	local layout = create("UIListLayout", {
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, 2),
 		FillDirection = Enum.FillDirection.Vertical,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -527,11 +489,11 @@ function Window:_buildUI()
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -16, 0, 16),
 		Position = UDim2.new(0, 8, 1, -18),
-		Font = Enum.Font.Gotham,
+		Font = Enum.Font.RobotoMono,
 		TextSize = 10,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.MutedText,
-		Text = "Hold: 8/2 scroll • 4/6 slider • Enter • Backspace • F8",
+		Text = "8/2 SCROLL  4/6 VALUE  ENTER  BACKSPACE  F8",
 	})
 	hint.Parent = root
 	self._hint = hint
@@ -545,13 +507,11 @@ function Window:_buildUI()
 			d.TextTransparency = 1
 		elseif d:IsA("UIStroke") then
 			d.Transparency = 1
+		elseif d:IsA("Frame") and d.Name == "TopBar" then
+			d.BackgroundTransparency = 1
 		end
 	end
 end
-
---============================================================
--- NOTIFICATIONS (con anim leggera)
---============================================================
 
 function Window:_buildNotifications()
 	if self._notif.container and self._notif.container.Parent then return end
@@ -573,7 +533,7 @@ function Window:_buildNotifications()
 		FillDirection = Enum.FillDirection.Vertical,
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 10),
+		Padding = UDim.new(0, 6),
 	})
 	list.Parent = holder
 	self._notif._layout = list
@@ -610,16 +570,12 @@ function Window:_dismissNotification(n, instant)
 		return
 	end
 
-	local startPos = fr.Position
-	-- uscita: slide leggero + fade
-	tween(fr, TweenNotifOut, {Position = startPos + UDim2.fromOffset(34, 0), BackgroundTransparency = 1})
+	tween(fr, TweenNotifOut, {BackgroundTransparency = 1})
 	for _, d in ipairs(fr:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") then
 			pcall(function() tween(d, TweenNotifOut, {TextTransparency = 1}) end)
 		elseif d:IsA("UIStroke") then
 			pcall(function() tween(d, TweenNotifOut, {Transparency = 1}) end)
-		elseif d:IsA("Frame") and d.Name == "Accent" then
-			-- niente (l'accento è frame: resta ok)
 		end
 	end
 
@@ -644,27 +600,18 @@ function Window:_createNotification(opts, isPrompt, cb)
 
 	local fr = create("Frame", {
 		BackgroundColor3 = Theme.NotifBg,
-		BackgroundTransparency = 0.06,
+		BackgroundTransparency = 0.04,
 		BorderSizePixel = 0,
 		Size = UDim2.fromOffset(300, isPrompt and 110 or 90),
-		Position = UDim2.new(0, 40, 0, 0),
+		Position = UDim2.new(0, 0, 0, 0),
 		ZIndex = 5100,
 	})
 	fr.Parent = self._notif.container
-	create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = fr})
 
 	local st = create("UIStroke", {
 		Color = Theme.NotifStroke,
 		Thickness = 1,
-		Transparency = 0.25,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = fr
-	})
-
-	local glow = create("UIStroke", {
-		Color = Theme.NotifShadow,
-		Thickness = 2,
-		Transparency = 0.90,
+		Transparency = 0.35,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		Parent = fr
 	})
@@ -672,24 +619,23 @@ function Window:_createNotification(opts, isPrompt, cb)
 	local accent = create("Frame", {
 		Name = "Accent",
 		BackgroundColor3 = _typeColor(ntype),
-		BackgroundTransparency = 0.15,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
-		Size = UDim2.new(0, 4, 1, -16),
-		Position = UDim2.fromOffset(10, 8),
+		Size = UDim2.new(0, 3, 1, 0),
+		Position = UDim2.fromOffset(0, 0),
 		ZIndex = 5200,
 	})
 	accent.Parent = fr
-	create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = accent})
 
 	local tLabel = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -52, 0, 22),
 		Position = UDim2.fromOffset(22, 10),
-		Font = Enum.Font.GothamBold,
+		Font = Enum.Font.RobotoMono,
 		TextSize = 14,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.Text,
-		Text = title,
+		Text = string.upper(title),
 		ZIndex = 5200,
 	})
 	tLabel.Parent = fr
@@ -699,7 +645,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 		Size = UDim2.new(0, 90, 0, 16),
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -30, 0, 12),
-		Font = Enum.Font.GothamSemibold,
+		Font = Enum.Font.RobotoMono,
 		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextColor3 = Theme.MutedText,
@@ -713,10 +659,10 @@ function Window:_createNotification(opts, isPrompt, cb)
 		Size = UDim2.fromOffset(18, 18),
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 10),
-		Font = Enum.Font.GothamBold,
+		Font = Enum.Font.RobotoMono,
 		TextSize = 14,
 		TextColor3 = Theme.MutedText,
-		Text = "×",
+		Text = "X",
 		AutoButtonColor = false,
 		ZIndex = 5300,
 	})
@@ -726,7 +672,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -30, 0, isPrompt and 36 or 42),
 		Position = UDim2.fromOffset(22, 34),
-		Font = Enum.Font.Gotham,
+		Font = Enum.Font.RobotoMono,
 		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
@@ -755,20 +701,19 @@ function Window:_createNotification(opts, isPrompt, cb)
 	if isPrompt then
 		local yes = create("TextButton", {
 			BackgroundColor3 = Theme.Accent,
-			BackgroundTransparency = 0.10,
+			BackgroundTransparency = 0.05,
 			BorderSizePixel = 0,
 			Size = UDim2.fromOffset(96, 26),
 			AnchorPoint = Vector2.new(0, 1),
 			Position = UDim2.new(0, 22, 1, -12),
-			Font = Enum.Font.GothamBold,
+			Font = Enum.Font.RobotoMono,
 			TextSize = 12,
-			TextColor3 = Theme.Text,
+			TextColor3 = Color3.fromRGB(10, 10, 10),
 			Text = "YES",
 			AutoButtonColor = false,
 			ZIndex = 5300,
 		})
 		yes.Parent = fr
-		create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = yes})
 
 		local no = create("TextButton", {
 			BackgroundColor3 = Theme.SliderTrack,
@@ -777,7 +722,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 			Size = UDim2.fromOffset(96, 26),
 			AnchorPoint = Vector2.new(0, 1),
 			Position = UDim2.new(0, 126, 1, -12),
-			Font = Enum.Font.GothamBold,
+			Font = Enum.Font.RobotoMono,
 			TextSize = 12,
 			TextColor3 = Theme.Text,
 			Text = "NO",
@@ -785,7 +730,6 @@ function Window:_createNotification(opts, isPrompt, cb)
 			ZIndex = 5300,
 		})
 		no.Parent = fr
-		create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = no})
 
 		local decided = false
 		local function decide(v)
@@ -812,28 +756,17 @@ function Window:_createNotification(opts, isPrompt, cb)
 		end)
 	end
 
-	--========================================================
-	-- ANIM IN: fade + slide leggero (niente pop)
-	--========================================================
-	local endPos = UDim2.new(0, 0, 0, 0)
-
-	-- start “soft”: un po’ a destra + un filo più trasparente
-	fr.Position = UDim2.new(0, 40, 0, 0)
 	fr.BackgroundTransparency = 1
 	st.Transparency = 1
-	glow.Transparency = 1
 
-	-- testi invisibili all’inizio
 	for _, d in ipairs(fr:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") then
 			d.TextTransparency = 1
 		end
 	end
 
-	-- tween verso lo stato normale
-	tween(fr, TweenNotifIn, {Position = endPos, BackgroundTransparency = 0.06})
-	tween(st, TweenNotifIn, {Transparency = 0.25})
-	tween(glow, TweenNotifIn, {Transparency = 0.90})
+	tween(fr, TweenNotifIn, {BackgroundTransparency = 0.04})
+	tween(st, TweenNotifIn, {Transparency = 0.35})
 
 	for _, d in ipairs(fr:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") then
@@ -844,7 +777,6 @@ function Window:_createNotification(opts, isPrompt, cb)
 	return n
 end
 
--- API
 function Window:Notify(opts)
 	if self._destroyed then return end
 	self:_createNotification(opts, false)
@@ -854,10 +786,6 @@ function Window:Prompt(opts, callback)
 	if self._destroyed then return end
 	self:_createNotification(opts, true, callback)
 end
-
---============================================================
--- DRAG MENU
---============================================================
 
 function Window:_enableDragFromZone(rebindOnly)
 	if rebindOnly then
@@ -891,10 +819,6 @@ function Window:_enableDragFromZone(rebindOnly)
 		end
 	end)
 end
-
---============================================================
--- SLIDER DRAG LOOP
---============================================================
 
 function Window:_startSliderDragLoop()
 	self._connections._sliderDragLoop = RunService.RenderStepped:Connect(function()
@@ -941,10 +865,6 @@ function Window:_updateSliderFromMouse(drag)
 	if right then right.Text = tostring(el.Value) end
 end
 
---============================================================
--- INPUT
---============================================================
-
 function Window:_bindInput()
 	self._connections._inputBegan = UserInputService.InputBegan:Connect(function(input, gpe)
 		if gpe or self._destroyed then return end
@@ -987,10 +907,6 @@ function Window:_bindInput()
 		end
 	end)
 end
-
---============================================================
--- HOLD LOOP
---============================================================
 
 function Window:_startHoldLoop()
 	local hold = self._hold
@@ -1071,10 +987,6 @@ function Window:_startHoldLoop()
 	end)
 end
 
---============================================================
--- UI HELPERS
---============================================================
-
 function Window:_clearList()
 	self._rowRefs = {}
 	for _, c in ipairs(self._list:GetChildren()) do
@@ -1093,19 +1005,19 @@ function Window:_transition(fn)
 		ZIndex = 999,
 	})
 	fade.Parent = self._content
-	tween(fade, TweenMed, {BackgroundTransparency = 0.15})
-	task.delay(TweenMed.Time, function()
+	tween(fade, TweenFast, {BackgroundTransparency = 0.1})
+	task.delay(TweenFast.Time, function()
 		if self._destroyed then return end
 		fn()
-		tween(fade, TweenMed, {BackgroundTransparency = 1})
-		task.delay(TweenMed.Time, function()
+		tween(fade, TweenFast, {BackgroundTransparency = 1})
+		task.delay(TweenFast.Time, function()
 			if fade then fade:Destroy() end
 		end)
 	end)
 end
 
 function Window:_makeRow(order, isHeader)
-	local h = isHeader and 28 or 40
+	local h = isHeader and 26 or 36
 	local row = create("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, h),
@@ -1128,24 +1040,36 @@ function Window:_makeRow(order, isHeader)
 		ZIndex = 2,
 	})
 	hl.Parent = row
-	create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = hl})
 
 	local bar = create("Frame", {
 		BackgroundColor3 = Theme.HighlightBar,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Size = UDim2.new(0, 3, 1, -10),
-		Position = UDim2.fromOffset(7, 5),
+		Size = UDim2.new(0, 3, 1, 0),
+		Position = UDim2.fromOffset(0, 0),
 		ZIndex = 3,
 	})
 	bar.Parent = row
-	create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = bar})
+
+	local caret = create("TextLabel", {
+		Name = "Caret",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(14, h),
+		Position = UDim2.fromOffset(6, 0),
+		Font = Enum.Font.RobotoMono,
+		TextSize = 13,
+		TextColor3 = Theme.Accent,
+		TextTransparency = 1,
+		Text = ">",
+		ZIndex = 4,
+	})
+	caret.Parent = row
 
 	local title = create("TextLabel", {
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -110, 1, 0),
-		Position = UDim2.fromOffset(14, -6),
-		Font = Enum.Font.Gotham,
+		Size = UDim2.new(1, -114, 1, 0),
+		Position = UDim2.fromOffset(22, -6),
+		Font = Enum.Font.RobotoMono,
 		TextSize = isHeader and 12 or 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.Text,
@@ -1159,7 +1083,7 @@ function Window:_makeRow(order, isHeader)
 		Size = UDim2.new(0, 90, 1, 0),
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -8, 0, 0),
-		Font = Enum.Font.GothamSemibold,
+		Font = Enum.Font.RobotoMono,
 		TextSize = isHeader and 12 or 12,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextColor3 = Theme.MutedText,
@@ -1176,7 +1100,7 @@ function Window:_makeRow(order, isHeader)
 	})
 	stroke.Parent = hl
 
-	self._rowRefs[row] = {hl=hl, bar=bar, stroke=stroke, title=title, right=right, btn=btn}
+	self._rowRefs[row] = {hl=hl, bar=bar, stroke=stroke, title=title, right=right, btn=btn, caret=caret}
 	return row
 end
 
@@ -1203,8 +1127,9 @@ function Window:_applyHighlight()
 		end
 		local r = self._rowRefs[row]
 		tween(r.hl, TweenFast, {BackgroundTransparency = isSel and Theme.HighlightTransparency or 1})
-		tween(r.bar, TweenFast, {BackgroundTransparency = isSel and 0.15 or 1})
-		tween(r.stroke, TweenFast, {Transparency = isSel and 0.60 or 1})
+		tween(r.bar, TweenFast, {BackgroundTransparency = isSel and 0 or 1})
+		tween(r.stroke, TweenFast, {Transparency = isSel and 0.55 or 1})
+		tween(r.caret, TweenFast, {TextTransparency = isSel and 0 or 1})
 	end
 
 	self:_ensureSelectionVisible()
@@ -1232,10 +1157,6 @@ function Window:_ensureSelectionVisible()
 	end
 end
 
---============================================================
--- RENDER
---============================================================
-
 function Window:_renderSections()
 	self:_clearList()
 	self._mode = "SECTIONS"
@@ -1246,8 +1167,8 @@ function Window:_renderSections()
 		local row = self:_makeRow(i, false)
 		row.Parent = self._list
 		local r = self._rowRefs[row]
-		r.title.Text = sec.Name
-		r.right.Text = "→"
+		r.title.Text = string.upper(sec.Name)
+		r.right.Text = ">"
 
 		r.btn.MouseButton1Click:Connect(function()
 			self._selectionIndex = i
@@ -1280,7 +1201,7 @@ function Window:_renderElements(section)
 			r.title.TextColor3 = Theme.MutedText
 
 		elseif el.Type == "Button" then
-			r.right.Text = "→"
+			r.right.Text = ">"
 			r.btn.MouseButton1Click:Connect(function()
 				self._selectionIndex = i
 				self:_applyHighlight()
@@ -1290,7 +1211,7 @@ function Window:_renderElements(section)
 		elseif el.Type == "Toggle" then
 			local function applyToggleUI()
 				r.right.Text = el.Value and "ON" or "OFF"
-				r.right.TextColor3 = el.Value and Theme.Text or Theme.MutedText
+				r.right.TextColor3 = el.Value and Theme.Accent or Theme.MutedText
 			end
 			applyToggleUI()
 
@@ -1306,29 +1227,27 @@ function Window:_renderElements(section)
 
 			local wrap = create("Frame", {
 				BackgroundTransparency = 1,
-				Size = UDim2.new(1, -150, 0, 8),
-				Position = UDim2.new(0, 12, 1, -14),
+				Size = UDim2.new(1, -150, 0, 6),
+				Position = UDim2.new(0, 20, 1, -12),
 				ZIndex = 10,
 			})
 			wrap.Parent = row
 
 			local track = create("Frame", {
 				BackgroundColor3 = Theme.SliderTrack,
-				BackgroundTransparency = 0.15,
+				BackgroundTransparency = 0,
 				BorderSizePixel = 0,
 				Size = UDim2.new(1, 0, 1, 0),
 			})
 			track.Parent = wrap
-			create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = track})
 
 			local fill = create("Frame", {
 				BackgroundColor3 = Theme.SliderFill,
-				BackgroundTransparency = 0.03,
+				BackgroundTransparency = 0,
 				BorderSizePixel = 0,
 				Size = UDim2.new(0, 0, 1, 0),
 			})
 			fill.Parent = track
-			create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = fill})
 
 			local function update()
 				local pct = 0
@@ -1379,7 +1298,7 @@ function Window:_renderDropdown(el)
 
 	local head = self:_makeRow(1, true)
 	head.Parent = self._list
-	self._rowRefs[head].title.Text = el.Text .. " (Select)"
+	self._rowRefs[head].title.Text = string.upper(el.Text) .. " - SELECT"
 	self._rowRefs[head].title.TextColor3 = Theme.MutedText
 	self._rowRefs[head].btn.Active = false
 
@@ -1388,7 +1307,7 @@ function Window:_renderDropdown(el)
 		row.Parent = self._list
 		local r = self._rowRefs[row]
 		r.title.Text = tostring(opt)
-		r.right.Text = (i == el.ValueIndex) and "✓" or ""
+		r.right.Text = (i == el.ValueIndex) and "*" or ""
 
 		r.btn.MouseButton1Click:Connect(function()
 			el:SetIndex(i)
@@ -1425,10 +1344,6 @@ function Window:_enterSection(idx)
 		self:_renderElements(sec)
 	end)
 end
-
---============================================================
--- NAV
---============================================================
 
 function Window:_navUp()
 	self._selectionIndex -= 1
@@ -1567,10 +1482,6 @@ function Window:_navBack()
 	end
 end
 
---============================================================
--- WINDOW API
---============================================================
-
 function Window:IsVisible()
 	return self._root and self._root.Visible or false
 end
@@ -1580,7 +1491,7 @@ function Window:Show(instant)
 	self:_attachToCoreGui()
 
 	self._root.Visible = true
-	if self._titleLabel then self._titleLabel.Text = self._title end
+	if self._titleLabel then self._titleLabel.Text = string.upper(self._title) end
 	if self._subtitleLabel then self._subtitleLabel.Text = self._subtitle end
 
 	if #self._sections > 0 then
@@ -1596,20 +1507,24 @@ function Window:Show(instant)
 				d.TextTransparency = 0
 			elseif d:IsA("UIStroke") and d.Parent == self._root then
 				d.Transparency = Theme.StrokeTransparency
+			elseif d:IsA("Frame") and d.Name == "TopBar" then
+				d.BackgroundTransparency = 0
 			end
 		end
 		return
 	end
 
 	local startPos = self._root.Position
-	self._root.Position = startPos + UDim2.fromOffset(-8, 8)
-	tween(self._root, TweenSlow, {BackgroundTransparency = Theme.PanelBgTransparency, Position = startPos})
+	self._root.Position = startPos - UDim2.fromOffset(24, 0)
+	tween(self._root, TweenMed, {BackgroundTransparency = Theme.PanelBgTransparency, Position = startPos})
 
 	for _, d in ipairs(self._root:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") then
-			tween(d, TweenSlow, {TextTransparency = 0})
+			tween(d, TweenMed, {TextTransparency = 0})
 		elseif d:IsA("UIStroke") and d.Parent == self._root then
-			tween(d, TweenSlow, {Transparency = Theme.StrokeTransparency})
+			tween(d, TweenMed, {Transparency = Theme.StrokeTransparency})
+		elseif d:IsA("Frame") and d.Name == "TopBar" then
+			tween(d, TweenMed, {BackgroundTransparency = 0})
 		end
 	end
 end
@@ -1624,18 +1539,20 @@ function Window:Hide(instant)
 		return
 	end
 
-	local endPos = self._root.Position + UDim2.fromOffset(-8, 8)
-	tween(self._root, TweenSlow, {BackgroundTransparency = 1, Position = endPos})
+	local endPos = self._root.Position - UDim2.fromOffset(24, 0)
+	tween(self._root, TweenMed, {BackgroundTransparency = 1, Position = endPos})
 
 	for _, d in ipairs(self._root:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") then
-			tween(d, TweenSlow, {TextTransparency = 1})
+			tween(d, TweenMed, {TextTransparency = 1})
 		elseif d:IsA("UIStroke") then
-			tween(d, TweenSlow, {Transparency = 1})
+			tween(d, TweenMed, {Transparency = 1})
+		elseif d:IsA("Frame") and d.Name == "TopBar" then
+			tween(d, TweenMed, {BackgroundTransparency = 1})
 		end
 	end
 
-	task.delay(TweenSlow.Time, function()
+	task.delay(TweenMed.Time, function()
 		if self._destroyed then return end
 		if self._root then
 			self._root.Visible = false
@@ -1686,10 +1603,6 @@ function Window:AddSection(name)
 end
 
 Window.AddTab = Window.AddSection
-
---============================================================
--- SECTION
---============================================================
 
 function Section:_newElement(t, text)
 	self._nextId += 1
@@ -1765,10 +1678,6 @@ function Section:AddDropdown(text, options, defaultIndex, cb)
 	self:_refreshIfOpen()
 	return el
 end
-
---============================================================
--- ELEMENT
---============================================================
 
 function Element:SetVisible(b)
 	self.Visible = (b == true)
