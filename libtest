@@ -1016,8 +1016,8 @@ function Window:_transition(fn)
 	end)
 end
 
-function Window:_makeRow(order, isHeader)
-	local h = isHeader and 26 or 36
+function Window:_makeRow(order, isHeader, thin)
+	local h = isHeader and 22 or (thin and 24 or 36)
 	local row = create("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, h),
@@ -1057,7 +1057,7 @@ function Window:_makeRow(order, isHeader)
 		Size = UDim2.fromOffset(14, h),
 		Position = UDim2.fromOffset(6, 0),
 		Font = Enum.Font.RobotoMono,
-		TextSize = 13,
+		TextSize = thin and 11 or 13,
 		TextColor3 = Theme.Accent,
 		TextTransparency = 1,
 		Text = ">",
@@ -1068,9 +1068,9 @@ function Window:_makeRow(order, isHeader)
 	local title = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -114, 1, 0),
-		Position = UDim2.fromOffset(22, -6),
+		Position = UDim2.fromOffset(22, thin and 0 or -6),
 		Font = Enum.Font.RobotoMono,
-		TextSize = isHeader and 12 or 13,
+		TextSize = isHeader and 12 or (thin and 11 or 13),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.Text,
 		Text = "",
@@ -1084,7 +1084,7 @@ function Window:_makeRow(order, isHeader)
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -8, 0, 0),
 		Font = Enum.Font.RobotoMono,
-		TextSize = isHeader and 12 or 12,
+		TextSize = thin and 11 or 12,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextColor3 = Theme.MutedText,
 		Text = "",
@@ -1164,7 +1164,7 @@ function Window:_renderSections()
 	self._dropdownState = nil
 
 	for i, sec in ipairs(self._sections) do
-		local row = self:_makeRow(i, false)
+		local row = self:_makeRow(i, false, true)
 		row.Parent = self._list
 		local r = self._rowRefs[row]
 		r.title.Text = string.upper(sec.Name)
