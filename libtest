@@ -342,7 +342,7 @@ function Window:_buildUI()
 	local root = create("Frame", {
 		Name = "Root",
 		Position = UDim2.fromOffset(40, 120),
-		Size = UDim2.fromOffset(340, 392),
+		Size = UDim2.fromOffset(380, 392),
 		BackgroundColor3 = Theme.PanelBg,
 		BackgroundTransparency = Theme.PanelBgTransparency,
 		BorderSizePixel = 0,
@@ -414,7 +414,7 @@ function Window:_buildUI()
 		Size = UDim2.new(1, 0, 0, 24),
 		Position = UDim2.fromOffset(0, 10),
 		Font = Enum.Font.Highway,
-		TextSize = 20,
+		TextSize = 22,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.Text,
 		Text = string.upper(self._title),
@@ -429,7 +429,7 @@ function Window:_buildUI()
 		Size = UDim2.new(1, 0, 0, 16),
 		Position = UDim2.fromOffset(0, 34),
 		Font = Enum.Font.RobotoMono,
-		TextSize = 12,
+		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = self._accent,
 		Text = self._subtitle,
@@ -497,7 +497,7 @@ function Window:_buildUI()
 		Size = UDim2.new(1, -16, 0, 16),
 		Position = UDim2.new(0, 8, 1, -18),
 		Font = Enum.Font.RobotoMono,
-		TextSize = 10,
+		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.MutedText,
 		Text = "8/2 SCROLL  4/6 VALUE  ENTER  BACKSPACE  F8",
@@ -1070,7 +1070,7 @@ function Window:_transition(fn)
 end
 
 function Window:_makeRow(order, isHeader, thin)
-	local h = isHeader and 22 or (thin and 24 or 36)
+	local h = isHeader and 24 or (thin and 27 or 40)
 	local row = create("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, h),
@@ -1110,7 +1110,7 @@ function Window:_makeRow(order, isHeader, thin)
 		Size = UDim2.fromOffset(14, h),
 		Position = UDim2.fromOffset(6, 0),
 		Font = Enum.Font.RobotoMono,
-		TextSize = thin and 11 or 13,
+		TextSize = thin and 12 or 14,
 		TextColor3 = self._accent,
 		TextTransparency = 1,
 		Text = ">",
@@ -1123,7 +1123,7 @@ function Window:_makeRow(order, isHeader, thin)
 		Size = UDim2.new(1, -114, 1, 0),
 		Position = UDim2.fromOffset(22, 0),
 		Font = Enum.Font.RobotoMono,
-		TextSize = isHeader and 12 or (thin and 11 or 13),
+		TextSize = isHeader and 13 or (thin and 12 or 14),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Theme.Text,
 		Text = "",
@@ -1137,7 +1137,7 @@ function Window:_makeRow(order, isHeader, thin)
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -8, 0, 0),
 		Font = Enum.Font.RobotoMono,
-		TextSize = thin and 11 or 12,
+		TextSize = thin and 12 or 13,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextColor3 = Theme.MutedText,
 		Text = "",
@@ -1223,11 +1223,11 @@ function Window:_applyContentHeight(rowHeights)
 		if i > 1 then sum += spacing end
 	end
 
-	local minRoot = 168
-	local maxRoot = 392
+	local minRoot = 190
+	local maxRoot = 456
 	local rootHeight = clamp(sum + 92, minRoot, maxRoot)
 
-	local target = UDim2.fromOffset(340, rootHeight)
+	local target = UDim2.fromOffset(380, rootHeight)
 	if self._root.Size == target then return end
 
 	tween(self._root, TweenMed, {Size = target})
@@ -1246,7 +1246,7 @@ function Window:_renderSections()
 		local r = self._rowRefs[row]
 		r.title.Text = string.upper(sec.Name)
 		r.right.Text = ">"
-		table.insert(rowHeights, 24)
+		table.insert(rowHeights, 27)
 
 		r.btn.MouseButton1Click:Connect(function()
 			self._selectionIndex = i
@@ -1303,6 +1303,7 @@ function Window:_renderElements(section)
 
 		elseif el.Type == "Slider" then
 			r.right.Text = tostring(el.Value)
+			r.title.Position = UDim2.fromOffset(22, -8)
 
 			local wrap = create("Frame", {
 				BackgroundTransparency = 1,
@@ -1367,7 +1368,7 @@ function Window:_renderElements(section)
 	end
 
 	self._selectionIndex = clamp(self._selectionIndex, 1, math.max(1, #els))
-	self:_applyContentHeight(table.create(#els, 36))
+	self:_applyContentHeight(table.create(#els, 40))
 	self:_applyHighlight()
 end
 
@@ -1396,8 +1397,8 @@ function Window:_renderDropdown(el)
 	end
 
 	self._selectionIndex = clamp((el.ValueIndex or 1) + 1, 2, math.max(2, #el.Options + 1))
-	local ddHeights = {22}
-	for _ = 1, #el.Options do table.insert(ddHeights, 36) end
+	local ddHeights = {24}
+	for _ = 1, #el.Options do table.insert(ddHeights, 40) end
 	self:_applyContentHeight(ddHeights)
 	self:_applyHighlight()
 end
