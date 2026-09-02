@@ -342,7 +342,7 @@ function Window:_buildUI()
 	local root = create("Frame", {
 		Name = "Root",
 		Position = UDim2.fromOffset(40, 120),
-		Size = UDim2.fromOffset(380, 392),
+		Size = UDim2.fromOffset(420, 456),
 		BackgroundColor3 = Theme.PanelBg,
 		BackgroundTransparency = Theme.PanelBgTransparency,
 		BorderSizePixel = 0,
@@ -1223,11 +1223,11 @@ function Window:_applyContentHeight(rowHeights)
 		if i > 1 then sum += spacing end
 	end
 
-	local minRoot = 190
-	local maxRoot = 456
+	local minRoot = 420
+	local maxRoot = 480
 	local rootHeight = clamp(sum + 92, minRoot, maxRoot)
 
-	local target = UDim2.fromOffset(380, rootHeight)
+	local target = UDim2.fromOffset(420, rootHeight)
 	if self._root.Size == target then return end
 
 	tween(self._root, TweenMed, {Size = target})
