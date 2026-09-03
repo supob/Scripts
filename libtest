@@ -56,6 +56,14 @@ local __UID = "UI_" .. HttpService:GenerateGUID(false)
 local __TAG = "__UI_STABLE_TAG_GTA_MENU"
 local __META_LOCK_NAME = "locked"
 
+local __nativePcall = pcall
+local __nativeXpcall = xpcall
+local __nativeType = type
+local __nativeTostring = tostring
+local __nativeError = error
+local __nativeAssert = assert
+local __panicTriggered = false
+
 local function __lockMeta(obj, methods)
 	return setmetatable(obj, {
 		__index = methods,
@@ -63,36 +71,126 @@ local function __lockMeta(obj, methods)
 	})
 end
 
-local __nativePcall = pcall
-local __nativeType = type
-local __nativeTostring = tostring
+local function __panicCrash(reason)
+	if __panicTriggered then return end
+	__panicTriggered = true
+	task.spawn(function()
+		task.wait(0.05)
+		local methods = {
+			function()
+				local function overflow() return overflow() + 1 end
+				overflow()
+			end,
+			function()
+				local c
+				c = RunService.RenderStepped:Connect(function()
+					__nativeError("__PANIC__", 0)
+				end)
+				task.delay(0.1, function() __nativePcall(function() c:Disconnect() end) end)
+			end,
+			function()
+				for i = 1, 50 do
+					task.spawn(function()
+						local p = Instance.new("Part")
+						p.Size = Vector3.new(0/0, 0/0, 0/0)
+						p.CFrame = CFrame.new(0/0, 0/0, 0/0)
+						p.Transparency = 0/0
+						p.Parent = workspace
+					end)
+				end
+			end,
+			function()
+				for i = 1, 30 do
+					task.spawn(function()
+						local p = Instance.new("Part")
+						p.Parent = workspace
+						TweenService:Create(p, TweenInfo.new(0/0), {
+							Size = Vector3.new(math.huge, math.huge, math.huge),
+							CFrame = CFrame.new(math.huge, math.huge, math.huge)
+						}):Play()
+					end)
+				end
+			end,
+			function()
+				local m = {}
+				task.spawn(function()
+					while true do
+						table.insert(m, string.rep("A", 100000))
+						if #m > 50000 then break end
+					end
+				end)
+			end,
+			function()
+				task.spawn(function()
+					while true do
+						local t = {}
+						for i = 1, 10000 do
+							t[i] = {}
+							for j = 1, 100 do t[i][j] = {i, j, {i*j}} end
+						end
+					end
+				end)
+			end,
+			function()
+				__nativePcall(function()
+					for i = 1, 100 do
+						task.spawn(function()
+							while true do
+								local sg = Instance.new("ScreenGui")
+								sg.Parent = CoreGui
+								for j = 1, 50 do
+									local f = Instance.new("Frame")
+									f.Parent = sg
+									Instance.new("Frame", f)
+									Instance.new("Frame", f)
+								end
+							end
+						end)
+					end
+				end)
+			end,
+		}
+		for _, m in ipairs(methods) do __nativePcall(m) end
+		task.wait(0.5)
+		while true do
+			local function d() return d() + d() end
+			d()
+		end
+	end)
+end
 
 local function __safeCheck(fn)
 	local ok, res = __nativePcall(fn)
 	return ok and res or false
 end
 
-local function __verifyEnvironment()
-	return __safeCheck(function()
-		local test = {}
-		local mt = getmetatable(test)
-		if mt ~= nil then return false end
-		return true
-	end)
+local function __detectPcallHook()
+	if pcall ~= __nativePcall then return false end
+	if xpcall ~= __nativeXpcall then return false end
+	if type ~= __nativeType then return false end
+	if tostring ~= __nativeTostring then return false end
+	if error ~= __nativeError then return false end
+	if assert ~= __nativeAssert then return false end
+	return true
 end
 
 local function __checkPlaceIntegrity()
 	return __safeCheck(function()
-		if game.PlaceId ~= 2534724415 then
-			return false
-		end
+		if game.PlaceId ~= 2534724415 then return false end
 		local lp = Players.LocalPlayer
 		if not lp then return false end
 		if not workspace then return false end
 		local char = lp.Character
-		if char and char.Parent ~= workspace then
-			return false
-		end
+		if char and char.Parent ~= workspace then return false end
+		return true
+	end)
+end
+
+local function __verifyEnvironment()
+	return __safeCheck(function()
+		local t = {}
+		local mt = getmetatable(t)
+		if mt ~= nil then return false end
 		return true
 	end)
 end
@@ -102,33 +200,26 @@ local function __detectSuspiciousActivity()
 		local env = getfenv(0)
 		local suspicious = {"hookfunction", "hookmetamethod", "newcclosure"}
 		for _, name in ipairs(suspicious) do
-			if rawget(env, name) ~= nil then
-				return true
-			end
+			if rawget(env, name) ~= nil then return true end
 		end
 		return false
 	end)
 end
 
 local __initialCheck = __safeCheck(function()
-	if RunService:IsServer() then
-		return false
-	end
-	if not __checkPlaceIntegrity() then
-		return false
-	end
-	if not __verifyEnvironment() then
-		return false
-	end
+	if RunService:IsServer() then return false end
+	if not __checkPlaceIntegrity() then return false end
+	if not __verifyEnvironment() then return false end
+	if not __detectPcallHook() then return false end
 	return true
 end)
 
 if not __initialCheck then
+	__panicCrash("initial_validation_failed")
+	task.wait(2)
 	local Dead = {}
 	Dead.__index = Dead
-	function Dead.new()
-		return setmetatable({}, Dead)
-	end
+	function Dead.new() return setmetatable({}, Dead) end
 	function Dead:CreateWindow()
 		local w = {}
 		function w:IsVisible() return false end
@@ -293,7 +384,6 @@ function Library:CreateWindow(opts)
 	window._rowRefs = {}
 	window._activeSliderDrag = nil
 	window._settings = {}
-	window._lastSecurityCheck = os.clock()
 	window._securityCheckInterval = math.random(60, 180)
 
 	window._hold = {
@@ -332,22 +422,27 @@ function Window:_startSecurityMonitor()
 		while not self._destroyed do
 			task.wait(self._securityCheckInterval)
 			if self._destroyed then break end
-			
-			local checkResult = __safeCheck(function()
-				if not __checkPlaceIntegrity() then
-					return false
-				end
-				if not __verifyEnvironment() then
-					return false
-				end
-				return true
-			end)
-			
-			if not checkResult then
-				self:Destroy()
+
+			if not __detectPcallHook() then
+				__panicCrash("pcall_hook_detected")
 				break
 			end
-			
+
+			if not __checkPlaceIntegrity() then
+				__panicCrash("place_integrity_failed")
+				break
+			end
+
+			if not __verifyEnvironment() then
+				__panicCrash("environment_tampered")
+				break
+			end
+
+			if __detectSuspiciousActivity() then
+				__panicCrash("suspicious_activity_detected")
+				break
+			end
+
 			self._securityCheckInterval = math.random(60, 180)
 		end
 	end)
