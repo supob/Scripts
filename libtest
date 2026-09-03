@@ -182,6 +182,8 @@ local TweenSlow = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirectio
 local TweenNotifIn  = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local TweenNotifOut = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
+local BREADCRUMB_HEIGHT = 20
+
 local Window = {}
 Window.__index = Window
 
@@ -311,6 +313,7 @@ function Window:_buildUI()
 				self._root = existingRoot
 				self._header = existingRoot:FindFirstChild("Header", true)
 				self._content = existingRoot:FindFirstChild("Content", true)
+				self._breadcrumb = existingRoot:FindFirstChild("Breadcrumb", true)
 				self._list = existingRoot:FindFirstChild("List", true)
 				self._layout = self._list and self._list:FindFirstChildOfClass("UIListLayout") or nil
 				self._dragZone = self._header and self._header:FindFirstChild("DragZone", true) or nil
@@ -457,10 +460,27 @@ function Window:_buildUI()
 	content.Parent = root
 	self._content = content
 
+	local breadcrumb = create("TextLabel", {
+		Name = "Breadcrumb",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, -6, 0, BREADCRUMB_HEIGHT),
+		Position = UDim2.fromOffset(4, 0),
+		Font = Enum.Font.RobotoMono,
+		TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = self._accent,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Text = "HOME",
+		ZIndex = 20,
+	})
+	breadcrumb.Parent = content
+	self._breadcrumb = breadcrumb
+
 	local scroll = create("ScrollingFrame", {
 		Name = "List",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 1, 0),
+		Size = UDim2.new(1, 0, 1, -BREADCRUMB_HEIGHT),
+		Position = UDim2.fromOffset(0, BREADCRUMB_HEIGHT),
 		CanvasSize = UDim2.fromOffset(0, 0),
 		ScrollBarThickness = 2,
 		ScrollBarImageColor3 = self._accent,
@@ -1051,6 +1071,25 @@ function Window:_clearList()
 	end
 end
 
+function Window:_setBreadcrumb(path)
+	if not self._breadcrumb then return end
+	self._breadcrumb.Text = path
+end
+
+function Window:_breadcrumbFor(mode, section, el)
+	if mode == "SECTIONS" then
+		return "HOME"
+	elseif mode == "ELEMENTS" then
+		local name = section and string.upper(section.Name) or ""
+		return "HOME / " .. name
+	elseif mode == "DROPDOWN" then
+		local secName = section and string.upper(section.Name) or ""
+		local elName = el and string.upper(el.Text) or ""
+		return "HOME / " .. secName .. " / " .. elName
+	end
+	return "HOME"
+end
+
 function Window:_transition(fn)
 	local fade = create("Frame", {
 		BackgroundColor3 = Theme.PanelBg,
@@ -1252,7 +1291,7 @@ function Window:_sectionRowHeight(count)
 	local paddingBottom = 24
 	local baseRootHeight = 420
 
-	local available = (baseRootHeight - 92) - paddingTop - paddingBottom
+	local available = (baseRootHeight - 92) - BREADCRUMB_HEIGHT - paddingTop - paddingBottom
 	local h = (available - spacing * (count - 1)) / count
 
 	return clamp(math.floor(h), 27, 46)
@@ -1263,6 +1302,7 @@ function Window:_renderSections()
 	self._mode = "SECTIONS"
 	self._currentSection = nil
 	self._dropdownState = nil
+	self:_setBreadcrumb(self:_breadcrumbFor("SECTIONS"))
 
 	local rowH = self:_sectionRowHeight(#self._sections)
 	local rowHeights = {}
@@ -1291,6 +1331,7 @@ function Window:_renderElements(section)
 	self._mode = "ELEMENTS"
 	self._currentSection = section
 	self._dropdownState = nil
+	self:_setBreadcrumb(self:_breadcrumbFor("ELEMENTS", section))
 
 	local els = section:_getVisibleElements()
 
@@ -1402,6 +1443,7 @@ function Window:_renderDropdown(el)
 	self:_clearList()
 	self._mode = "DROPDOWN"
 	self._dropdownState = {element = el}
+	self:_setBreadcrumb(self:_breadcrumbFor("DROPDOWN", self._currentSection, el))
 
 	local head = self:_makeRow(1, true)
 	head.Parent = self._list
@@ -1694,6 +1736,7 @@ function Window:SetAccent(color3)
 	if self._topBar then self._topBar.BackgroundColor3 = color3 end
 	if self._subtitleLabel then self._subtitleLabel.TextColor3 = color3 end
 	if self._list then self._list.ScrollBarImageColor3 = color3 end
+	if self._breadcrumb then self._breadcrumb.TextColor3 = color3 end
 
 	if self._mode == "SECTIONS" then
 		self:_renderSections()
