@@ -7,7 +7,6 @@ local function __remoteEnabled()
 	if not ok or type(res) ~= "string" then
 		return false
 	end
-
 	res = string.lower(res)
 	res = string.gsub(res, "%s+", "")
 	return res == "yes"
@@ -16,11 +15,9 @@ end
 if not __remoteEnabled() then
 	local Dead = {}
 	Dead.__index = Dead
-
 	function Dead.new()
 		return setmetatable({}, Dead)
 	end
-
 	function Dead:CreateWindow()
 		local w = {}
 		function w:IsVisible() return false end
@@ -41,7 +38,6 @@ if not __remoteEnabled() then
 		w.AddTab = w.AddSection
 		return w
 	end
-
 	return Dead
 end
 
@@ -59,6 +55,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local __UID = "UI_" .. HttpService:GenerateGUID(false)
 local __TAG = "__UI_STABLE_TAG_GTA_MENU"
 local __META_LOCK_NAME = "locked"
+local __INTEGRITY_HASH = nil
 
 local function __lockMeta(obj, methods)
 	return setmetatable(obj, {
@@ -67,16 +64,205 @@ local function __lockMeta(obj, methods)
 	})
 end
 
+local __nativeFunctions = {
+	pcall = pcall,
+	xpcall = xpcall,
+	error = error,
+	assert = assert,
+	type = type,
+	typeof = typeof,
+	getmetatable = getmetatable,
+	setmetatable = setmetatable,
+	rawget = rawget,
+	rawset = rawset,
+	rawequal = rawequal,
+	rawlen = rawlen,
+	select = select,
+	unpack = unpack or table.unpack,
+	ipairs = ipairs,
+	pairs = pairs,
+	next = next,
+	tostring = tostring,
+	tonumber = tonumber,
+	loadstring = loadstring,
+}
+
+local function __computeIntegrityHash()
+	local hash = 0
+	local scriptContent = ""
+	pcall(function()
+		scriptContent = tostring(__INTEGRITY_HASH or "")
+	end)
+	for i = 1, #scriptContent do
+		hash = (hash * 31 + string.byte(scriptContent, i)) % 2^32
+	end
+	return hash
+end
+
+local function __verifyNativeFunction(name, expectedFunc)
+	local currentFunc = __G and __G[name] or _G[name]
+	if currentFunc ~= expectedFunc then
+		return false, "Function " .. name .. " has been modified"
+	end
+	local ok, res = pcall(function()
+		return string.find(tostring(currentFunc), "function") ~= nil
+	end)
+	if not ok or not res then
+		return false, "Function " .. name .. " signature invalid"
+	end
+	return true
+end
+
+local function __detectExecutor()
+	local suspiciousGlobals = {
+		"syn", "Synapse", "getgenv", "getrenv", "getsenv", "getmenv",
+		"hookfunction", "hookmetamethod", "newcclosure", "checkcaller",
+		"getnamecallmethod", "setnamecallmethod", "getcallingscript",
+		"cloneref", "clonefunction", "isreadonly", "setreadonly",
+		"rconsoleprint", "rconsoleinfo", "rconsolewarn", "rconsoleerr",
+		"rconsoleclear", "rconsolecreate", "rconsoleinput", "printconsole",
+		"readfile", "writefile", "appendfile", "listfiles", "loadfile",
+		"isfile", "isfolder", "makefolder", "delfolder", "delfile",
+		"request", "http_request", "httpget", "httppost",
+		"getcustomasset", "getobjects", "saveinstance", "decompile",
+		"getgc", "getloadedmodules", "getscripts", "getscripthash",
+		"fireclickdetector", "fireproximityprompt", "firetouchinterest",
+		"fireserver", "fire", "gethui", "getinstances", "getnilinstances",
+		"getconnections", "getsignal", "getproperties", "sethiddenproperty",
+		"isexecutorclosure", "checkclosure", "islclosure", "iscclosure",
+		"newproxy", "getrawmetatable", "setrawmetatable",
+	}
+	
+	for _, globalName in ipairs(suspiciousGlobals) do
+		if rawget(getfenv(), globalName) ~= nil then
+			return true, globalName
+		end
+	end
+	
+	if debug and debug.getinfo then
+		local ok, info = pcall(function()
+			return debug.getinfo(1)
+		end)
+		if ok and info and info.source then
+			local sourceStr = tostring(info.source)
+			if string.find(sourceStr, "executor") or string.find(sourceStr, "inject") then
+				return true, "Debug source anomaly"
+			end
+		end
+	end
+	
+	return false
+end
+
+local function __verifyCallStack()
+	local ok, level = pcall(function()
+		local depth = 0
+		while true do
+			local info = debug.getinfo(depth, "S")
+			if not info then break end
+			if info.source and string.find(info.source, "executor") then
+				return false, depth
+			end
+			depth = depth + 1
+			if depth > 50 then break end
+		end
+		return true
+	end)
+	return ok and level or false
+end
+
+local function __checkEnvironmentIntegrity()
+	local env = getfenv()
+	local criticalFunctions = {"pcall", "xpcall", "error", "assert", "type", "typeof"}
+	
+	for _, funcName in ipairs(criticalFunctions) do
+		local isValid, reason = __verifyNativeFunction(funcName, __nativeFunctions[funcName])
+		if not isValid then
+			return false, reason
+		end
+	end
+	
+	local metatableOk = pcall(function()
+		local testTable = {}
+		local mt = getmetatable(testTable)
+		setmetatable(testTable, {__index = function() return "test" end})
+		local val = testTable.nonexistent
+		setmetatable(testTable, nil)
+		return val == "test"
+	end)
+	
+	if not metatableOk then
+		return false, "Metatable manipulation detected"
+	end
+	
+	return true
+end
+
+local function __validateExecution()
+	if RunService:IsServer() then
+		return false, "Server execution not allowed"
+	end
+	
+	if game.PlaceId ~= 2534724415 then
+		return false, "Invalid PlaceId"
+	end
+	
+	local executorDetected, executorName = __detectExecutor()
+	if executorDetected then
+		//return false, "Executor detected: " .. tostring(executorName)
+	end
+	
+	local envIntegrity = __checkEnvironmentIntegrity()
+	if not envIntegrity then
+		return false, "Environment integrity check failed"
+	end
+	
+	local stackValid = __verifyCallStack()
+	if not stackValid then
+		return false, "Call stack anomaly detected"
+	end
+	
+	return true
+end
+
+local __validationResult, __validationReason = __validateExecution()
+if not __validationResult then
+	local Dead = {}
+	Dead.__index = Dead
+	function Dead.new()
+		return setmetatable({}, Dead)
+	end
+	function Dead:CreateWindow()
+		local w = {}
+		function w:IsVisible() return false end
+		function w:Show() end
+		function w:Hide() end
+		function w:Toggle() end
+		function w:SetKeybind() end
+		function w:Destroy() end
+		function w:AddSection()
+			local s = {}
+			function s:AddLabel() end
+			function s:AddButton() end
+			function s:AddToggle() end
+			function s:AddSlider() end
+			function s:AddDropdown() end
+			return s
+		end
+		w.AddTab = w.AddSection
+		return w
+	end
+	return Dead
+end
+
 if RunService:IsServer() then
 	local StubWindow = {}
 	StubWindow.__index = StubWindow
 	local StubSection = {}
 	StubSection.__index = StubSection
-
 	function Library.new()
 		return setmetatable({_windows = {}}, Library)
 	end
-
 	function Library:CreateWindow()
 		local w = setmetatable({}, StubWindow)
 		function w:IsVisible() return false end
@@ -99,7 +285,6 @@ if RunService:IsServer() then
 		function w:Prompt(_, cb) if type(cb)=="function" then cb(false) end end
 		return w
 	end
-
 	return Library
 end
 
@@ -146,29 +331,20 @@ end
 local Theme = {
 	PanelBg = Color3.fromRGB(6, 6, 7),
 	PanelBgTransparency = 0.08,
-
 	Text = Color3.fromRGB(235, 235, 235),
 	MutedText = Color3.fromRGB(150, 150, 150),
-
 	Stroke = Color3.fromRGB(190, 150, 255),
 	StrokeTransparency = 0.45,
-
 	Glow = Color3.fromRGB(190, 150, 255),
 	GlowTransparency = 0.94,
-
 	HighlightBg = Color3.fromRGB(190, 150, 255),
 	HighlightTransparency = 0.72,
 	HighlightBar = Color3.fromRGB(190, 150, 255),
-
 	Accent = Color3.fromRGB(190, 150, 255),
-
 	SliderTrack = Color3.fromRGB(28, 28, 30),
 	SliderFill = Color3.fromRGB(190, 150, 255),
-
 	NotifBg = Color3.fromRGB(6, 6, 7),
 	NotifStroke = Color3.fromRGB(190, 150, 255),
-	NotifShadow = Color3.fromRGB(190, 150, 255),
-
 	Info = Color3.fromRGB(190, 150, 255),
 	Success = Color3.fromRGB(140, 220, 140),
 	Warning = Color3.fromRGB(255, 210, 90),
@@ -177,19 +353,14 @@ local Theme = {
 
 local TweenFast = TweenInfo.new(0.06, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 local TweenMed  = TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TweenSlow = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
 local TweenNotifIn  = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local TweenNotifOut = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-
 local BREADCRUMB_HEIGHT = 20
 
 local Window = {}
 Window.__index = Window
-
 local Section = {}
 Section.__index = Section
-
 local Element = {}
 Element.__index = Element
 
@@ -201,10 +372,9 @@ end
 
 function Library:CreateWindow(opts)
 	opts = opts or {}
-
 	local lp = getLocalPlayer()
 	if not lp then
-		error("[UI] LocalPlayer not available (run on client, not too early).", 2)
+		error("[UI] LocalPlayer not available", 2)
 	end
 
 	local window = __lockMeta({}, Window)
@@ -212,44 +382,32 @@ function Library:CreateWindow(opts)
 	window._localPlayer = lp
 	window._title = opts.Title or "Menu"
 	window._subtitle = opts.Subtitle or "GTA Style"
-
 	window._sections = {}
 	window._sectionByName = {}
-
 	window._mode = "SECTIONS"
 	window._history = {}
 	window._currentSection = nil
 	window._selectionIndex = 1
 	window._dropdownState = nil
-
 	window._toggleKey = Enum.KeyCode.F8
 	window._accent = Theme.Accent
 	window._connections = {}
 	window._destroyed = false
 	window._rowRefs = {}
-
 	window._activeSliderDrag = nil
+	window._settings = {}
+	window._integrityCheckInterval = math.random(45, 180)
+	window._lastIntegrityCheck = os.clock()
 
 	window._hold = {
 		up=false, down=false, left=false, right=false,
-		active=false,
-		lastMode="",
-		lastDir=0,
-		heldSince=0,
-		lastRepeat=0,
+		active=false, lastMode="", lastDir=0, heldSince=0, lastRepeat=0,
 	}
-
 	window._holdConfig = {
-		initialDelay = 0.16,
-		repeatRate = 0.045,
-		accel = 0.35,
-		maxAccel = 1.25,
+		initialDelay = 0.16, repeatRate = 0.045, accel = 0.35, maxAccel = 1.25,
 	}
-
 	window._notif = {
-		container = nil,
-		stack = {},
-		max = 3,
+		container = nil, stack = {}, max = 3,
 	}
 
 	window:_buildUI()
@@ -258,7 +416,8 @@ function Library:CreateWindow(opts)
 	window:_startHoldLoop()
 	window:_startSliderDragLoop()
 	window:_buildNotifications()
-
+	window:_startSecurityCheck()
+	window:_startIntegrityMonitor()
 	window:Hide(true)
 
 	task.delay(1, function()
@@ -272,6 +431,27 @@ function Library:CreateWindow(opts)
 	return window
 end
 
+function Window:_startIntegrityMonitor()
+	task.spawn(function()
+		while not self._destroyed do
+			task.wait(math.random(30, 120))
+			if self._destroyed then break end
+			
+			local isValid, reason = __validateExecution()
+			if not isValid then
+				self:Destroy()
+				break
+			end
+			
+			local envCheck = __checkEnvironmentIntegrity()
+			if not envCheck then
+				self:Destroy()
+				break
+			end
+		end
+	end)
+end
+
 function Window:_ensureCoreGui()
 	return CoreGui
 end
@@ -279,13 +459,9 @@ end
 function Window:_attachToCoreGui()
 	local cg = self:_ensureCoreGui()
 	if not cg then return end
-
 	if self._screenGui and self._screenGui.Parent ~= cg then
-		pcall(function()
-			self._screenGui.Parent = cg
-		end)
+		pcall(function() self._screenGui.Parent = cg end)
 	end
-
 	if self._screenGui then
 		self._screenGui.ResetOnSpawn = false
 	end
@@ -295,17 +471,14 @@ function Window:_buildUI()
 	local cg = self:_ensureCoreGui()
 	if cg then
 		local found, extras = nil, {}
-
 		for _, g in ipairs(cg:GetChildren()) do
 			if g:IsA("ScreenGui") and g:GetAttribute(__TAG) == true then
 				if not found then found = g else table.insert(extras, g) end
 			end
 		end
-
 		for _, ex in ipairs(extras) do
 			pcall(function() ex:Destroy() end)
 		end
-
 		if found then
 			self._screenGui = found
 			local existingRoot = found:FindFirstChild("Root", true)
@@ -324,7 +497,6 @@ function Window:_buildUI()
 				self._topBar = self._header and self._header:FindFirstChild("TopBar", true)
 				local existingGlow = existingRoot:FindFirstChild("Glow", true)
 				self._glowStroke = existingGlow and existingGlow:FindFirstChildOfClass("UIStroke")
-
 				if self._dragZone and self._root then
 					self:_enableDragFromZone(true)
 				end
@@ -334,175 +506,93 @@ function Window:_buildUI()
 	end
 
 	local sg = create("ScreenGui", {
-		Name = __UID,
-		IgnoreGuiInset = false,
-		ResetOnSpawn = false,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Name = __UID, IgnoreGuiInset = false, ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	})
 	sg:SetAttribute(__TAG, true)
 	self._screenGui = sg
 
 	local root = create("Frame", {
-		Name = "Root",
-		Position = UDim2.fromOffset(40, 120),
-		Size = UDim2.fromOffset(420, 456),
-		BackgroundColor3 = Theme.PanelBg,
-		BackgroundTransparency = Theme.PanelBgTransparency,
-		BorderSizePixel = 0,
-		Visible = true,
+		Name = "Root", Position = UDim2.fromOffset(40, 120), Size = UDim2.fromOffset(420, 456),
+		BackgroundColor3 = Theme.PanelBg, BackgroundTransparency = Theme.PanelBgTransparency, BorderSizePixel = 0, Visible = true,
 	})
 	root.Parent = sg
 	self._root = root
 
 	self._rootStroke = create("UIStroke", {
-		Color = self._accent,
-		Thickness = 1,
-		Transparency = Theme.StrokeTransparency,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = root
+		Color = self._accent, Thickness = 1, Transparency = Theme.StrokeTransparency, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = root
 	})
 
 	local glow = create("Frame", {
-		Name = "Glow",
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Size = UDim2.new(1, 8, 1, 8),
-		Position = UDim2.new(0, -4, 0, -4),
-		ZIndex = root.ZIndex - 1,
+		Name = "Glow", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 8, 1, 8), Position = UDim2.new(0, -4, 0, -4), ZIndex = root.ZIndex - 1,
 	})
 	glow.Parent = root
 	self._glowStroke = create("UIStroke", {
-		Color = self._accent,
-		Thickness = 1,
-		Transparency = Theme.GlowTransparency,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = glow
+		Color = self._accent, Thickness = 1, Transparency = Theme.GlowTransparency, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = glow
 	})
 
 	local header = create("Frame", {
-		Name = "Header",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -16, 0, 56),
-		Position = UDim2.fromOffset(8, 8),
+		Name = "Header", BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, 56), Position = UDim2.fromOffset(8, 8),
 	})
 	header.Parent = root
 	self._header = header
 
 	local topBar = create("Frame", {
-		Name = "TopBar",
-		BackgroundColor3 = self._accent,
-		BackgroundTransparency = 0,
-		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 2),
-		Position = UDim2.fromOffset(0, 0),
+		Name = "TopBar", BackgroundColor3 = self._accent, BackgroundTransparency = 0, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 2), Position = UDim2.fromOffset(0, 0),
 	})
 	topBar.Parent = header
 	self._topBar = topBar
 
 	local dragZone = create("TextButton", {
-		Name = "DragZone",
-		Text = "",
-		AutoButtonColor = false,
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 1, 0),
-		Position = UDim2.fromOffset(0, 0),
-		ZIndex = 60,
+		Name = "DragZone", Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Position = UDim2.fromOffset(0, 0), ZIndex = 60,
 	})
 	dragZone.Parent = header
 	self._dragZone = dragZone
 
 	local titleLabel = create("TextLabel", {
-		Name = "Title",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 24),
-		Position = UDim2.fromOffset(0, 10),
-		Font = Enum.Font.Highway,
-		TextSize = 22,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Theme.Text,
-		Text = string.upper(self._title),
-		ZIndex = 70,
+		Name = "Title", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, 10),
+		Font = Enum.Font.GothamBold, TextSize = 22, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Theme.Text, Text = string.upper(self._title), ZIndex = 70,
 	})
 	titleLabel.Parent = header
 	self._titleLabel = titleLabel
 
 	local subtitleLabel = create("TextLabel", {
-		Name = "Subtitle",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 16),
-		Position = UDim2.fromOffset(0, 34),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 13,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = self._accent,
-		Text = self._subtitle,
-		ZIndex = 70,
+		Name = "Subtitle", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 16), Position = UDim2.fromOffset(0, 34),
+		Font = Enum.Font.Gotham, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = self._accent, Text = self._subtitle, ZIndex = 70,
 	})
 	subtitleLabel.Parent = header
 	self._subtitleLabel = subtitleLabel
 
 	local divider = create("Frame", {
-		Name = "Divider",
-		BackgroundColor3 = self._accent,
-		BackgroundTransparency = 0.6,
-		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 1),
-		Position = UDim2.new(0, 0, 1, -2),
+		Name = "Divider", BackgroundColor3 = self._accent, BackgroundTransparency = 0.6, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -2),
 	})
 	divider.Parent = header
 
 	local content = create("Frame", {
-		Name = "Content",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -16, 1, -92),
-		Position = UDim2.fromOffset(8, 70),
+		Name = "Content", BackgroundTransparency = 1, Size = UDim2.new(1, -16, 1, -92), Position = UDim2.fromOffset(8, 70),
 	})
 	content.Parent = root
 	self._content = content
 
 	local breadcrumb = create("TextLabel", {
-		Name = "Breadcrumb",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -6, 0, BREADCRUMB_HEIGHT),
-		Position = UDim2.fromOffset(4, 0),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 12,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = self._accent,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		Text = "HOME",
-		ZIndex = 20,
+		Name = "Breadcrumb", BackgroundTransparency = 1, Size = UDim2.new(1, -6, 0, BREADCRUMB_HEIGHT), Position = UDim2.fromOffset(4, 0),
+		Font = Enum.Font.Gotham, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = self._accent, TextTruncate = Enum.TextTruncate.AtEnd, Text = "HOME", ZIndex = 20,
 	})
 	breadcrumb.Parent = content
 	self._breadcrumb = breadcrumb
 
 	local scroll = create("ScrollingFrame", {
-		Name = "List",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 1, -BREADCRUMB_HEIGHT),
-		Position = UDim2.fromOffset(0, BREADCRUMB_HEIGHT),
-		CanvasSize = UDim2.fromOffset(0, 0),
-		ScrollBarThickness = 2,
-		ScrollBarImageColor3 = self._accent,
-		ScrollBarImageTransparency = 0.2,
-		ScrollingDirection = Enum.ScrollingDirection.Y,
+		Name = "List", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -BREADCRUMB_HEIGHT), Position = UDim2.fromOffset(0, BREADCRUMB_HEIGHT),
+		CanvasSize = UDim2.fromOffset(0, 0), ScrollBarThickness = 2, ScrollBarImageColor3 = self._accent, ScrollBarImageTransparency = 0.2, ScrollingDirection = Enum.ScrollingDirection.Y,
 	})
 	scroll.Parent = content
 	self._list = scroll
 
 	create("UIPadding", {
-		PaddingTop = UDim.new(0, 4),
-		PaddingBottom = UDim.new(0, 24),
-		PaddingLeft = UDim.new(0, 2),
-		PaddingRight = UDim.new(0, 2),
-		Parent = scroll
+		PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 24), PaddingLeft = UDim.new(0, 2), PaddingRight = UDim.new(0, 2), Parent = scroll
 	})
 
 	local layout = create("UIListLayout", {
-		Padding = UDim.new(0, 2),
-		FillDirection = Enum.FillDirection.Vertical,
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 2), FillDirection = Enum.FillDirection.Vertical, HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder,
 	})
 	layout.Parent = scroll
 	self._layout = layout
@@ -512,15 +602,8 @@ function Window:_buildUI()
 	end)
 
 	local hint = create("TextLabel", {
-		Name = "Hint",
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -16, 0, 16),
-		Position = UDim2.new(0, 8, 1, -18),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 11,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Theme.MutedText,
-		Text = "8/2 SCROLL  4/6 VALUE  ENTER  BACKSPACE  F8",
+		Name = "Hint", BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, 16), Position = UDim2.new(0, 8, 1, -18),
+		Font = Enum.Font.Gotham, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Theme.MutedText, Text = "8/2 SCROLL  4/6 VALUE  ENTER  BACKSPACE  F8",
 	})
 	hint.Parent = root
 	self._hint = hint
@@ -543,24 +626,13 @@ end
 function Window:_buildNotifications()
 	if self._notif.container and self._notif.container.Parent then return end
 	if not self._screenGui then return end
-
 	local holder = create("Frame", {
-		Name = "Notifications",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(320, 220),
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -18, 1, -18),
-		ZIndex = 5000,
+		Name = "Notifications", BackgroundTransparency = 1, Size = UDim2.fromOffset(320, 220), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -18, 1, -18), ZIndex = 5000,
 	})
 	holder.Parent = self._screenGui
 	self._notif.container = holder
-
 	local list = create("UIListLayout", {
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		FillDirection = Enum.FillDirection.Vertical,
-		HorizontalAlignment = Enum.HorizontalAlignment.Right,
-		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder, FillDirection = Enum.FillDirection.Vertical, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Bottom, Padding = UDim.new(0, 6),
 	})
 	list.Parent = holder
 	self._notif._layout = list
@@ -588,15 +660,12 @@ function Window:_dismissNotification(n, instant)
 	if not n or not n.frame then return end
 	if n.alive == false then return end
 	n.alive = false
-
 	local fr = n.frame
 	if not fr.Parent then return end
-
 	if instant then
 		pcall(function() fr:Destroy() end)
 		return
 	end
-
 	tween(fr, TweenNotifOut, {BackgroundTransparency = 1})
 	for _, d in ipairs(fr:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") then
@@ -607,7 +676,6 @@ function Window:_dismissNotification(n, instant)
 			pcall(function() tween(d, TweenNotifOut, {BackgroundTransparency = 1}) end)
 		end
 	end
-
 	task.delay(TweenNotifOut.Time + 0.03, function()
 		pcall(function() fr:Destroy() end)
 	end)
@@ -624,91 +692,43 @@ function Window:_createNotification(opts, isPrompt, cb)
 
 	self:_buildNotifications()
 	if not self._notif.container then return end
-
 	self:_notifRemoveOldestIfNeeded()
 
 	local fr = create("Frame", {
-		BackgroundColor3 = Theme.NotifBg,
-		BackgroundTransparency = 0.04,
-		BorderSizePixel = 0,
-		Size = UDim2.fromOffset(300, isPrompt and 110 or 90),
-		Position = UDim2.new(0, 0, 0, 0),
-		ZIndex = 5100,
+		BackgroundColor3 = Theme.NotifBg, BackgroundTransparency = 0.04, BorderSizePixel = 0, Size = UDim2.fromOffset(300, isPrompt and 110 or 90), Position = UDim2.new(0, 0, 0, 0), ZIndex = 5100,
 	})
 	fr.Parent = self._notif.container
 
 	local st = create("UIStroke", {
-		Color = self._accent,
-		Thickness = 1,
-		Transparency = 0.35,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = fr
+		Color = self._accent, Thickness = 1, Transparency = 0.35, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = fr
 	})
 
 	local accent = create("Frame", {
-		Name = "Accent",
-		BackgroundColor3 = self:_typeColor(ntype),
-		BackgroundTransparency = 0,
-		BorderSizePixel = 0,
-		Size = UDim2.new(0, 3, 1, 0),
-		Position = UDim2.fromOffset(0, 0),
-		ZIndex = 5200,
+		Name = "Accent", BackgroundColor3 = self:_typeColor(ntype), BackgroundTransparency = 0, BorderSizePixel = 0, Size = UDim2.new(0, 3, 1, 0), Position = UDim2.fromOffset(0, 0), ZIndex = 5200,
 	})
 	accent.Parent = fr
 
 	local tLabel = create("TextLabel", {
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -52, 0, 22),
-		Position = UDim2.fromOffset(22, 10),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Theme.Text,
-		Text = string.upper(title),
-		ZIndex = 5200,
+		BackgroundTransparency = 1, Size = UDim2.new(1, -52, 0, 24), Position = UDim2.fromOffset(22, 10),
+		Font = Enum.Font.GothamBold, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Theme.Text, Text = string.upper(title), ZIndex = 5200,
 	})
 	tLabel.Parent = fr
 
 	local typeLabel = create("TextLabel", {
-		BackgroundTransparency = 1,
-		Size = UDim2.new(0, 90, 0, 16),
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -30, 0, 12),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 11,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextColor3 = Theme.MutedText,
-		Text = string.upper(ntype),
-		ZIndex = 5200,
+		BackgroundTransparency = 1, Size = UDim2.new(0, 90, 0, 16), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -30, 0, 12),
+		Font = Enum.Font.Gotham, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = Theme.MutedText, Text = string.upper(ntype), ZIndex = 5200,
 	})
 	typeLabel.Parent = fr
 
 	local xBtn = create("TextButton", {
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(18, 18),
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -10, 0, 10),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 14,
-		TextColor3 = Theme.MutedText,
-		Text = "X",
-		AutoButtonColor = false,
-		ZIndex = 5300,
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(18, 18), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 10),
+		Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.MutedText, Text = "X", AutoButtonColor = false, ZIndex = 5300,
 	})
 	xBtn.Parent = fr
 
 	local body = create("TextLabel", {
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -30, 0, isPrompt and 36 or 42),
-		Position = UDim2.fromOffset(22, 34),
-		Font = Enum.Font.RobotoMono,
-		TextSize = 12,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		TextColor3 = Theme.MutedText,
-		TextWrapped = true,
-		Text = text,
-		ZIndex = 5200,
+		BackgroundTransparency = 1, Size = UDim2.new(1, -30, 0, isPrompt and 36 or 42), Position = UDim2.fromOffset(22, 36),
+		Font = Enum.Font.Gotham, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextColor3 = Theme.Text, TextWrapped = true, Text = text, ZIndex = 5200,
 	})
 	body.Parent = fr
 
@@ -729,34 +749,14 @@ function Window:_createNotification(opts, isPrompt, cb)
 
 	if isPrompt then
 		local yes = create("TextButton", {
-			BackgroundColor3 = self._accent,
-			BackgroundTransparency = 0.05,
-			BorderSizePixel = 0,
-			Size = UDim2.fromOffset(96, 26),
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 22, 1, -12),
-			Font = Enum.Font.RobotoMono,
-			TextSize = 12,
-			TextColor3 = Color3.fromRGB(10, 10, 10),
-			Text = "YES",
-			AutoButtonColor = false,
-			ZIndex = 5300,
+			BackgroundColor3 = self._accent, BackgroundTransparency = 0.05, BorderSizePixel = 0, Size = UDim2.fromOffset(96, 26), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 22, 1, -12),
+			Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.fromRGB(10, 10, 10), Text = "YES", AutoButtonColor = false, ZIndex = 5300,
 		})
 		yes.Parent = fr
 
 		local no = create("TextButton", {
-			BackgroundColor3 = Theme.SliderTrack,
-			BackgroundTransparency = 0.05,
-			BorderSizePixel = 0,
-			Size = UDim2.fromOffset(96, 26),
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 126, 1, -12),
-			Font = Enum.Font.RobotoMono,
-			TextSize = 12,
-			TextColor3 = Theme.Text,
-			Text = "NO",
-			AutoButtonColor = false,
-			ZIndex = 5300,
+			BackgroundColor3 = Theme.SliderTrack, BackgroundTransparency = 0.05, BorderSizePixel = 0, Size = UDim2.fromOffset(96, 26), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 126, 1, -12),
+			Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Theme.Text, Text = "NO", AutoButtonColor = false, ZIndex = 5300,
 		})
 		no.Parent = fr
 
@@ -764,9 +764,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 		local function decide(v)
 			if decided then return end
 			decided = true
-			if type(cb) == "function" then
-				task.spawn(cb, v)
-			end
+			if type(cb) == "function" then task.spawn(cb, v) end
 			closeNow()
 		end
 
@@ -779,9 +777,7 @@ function Window:_createNotification(opts, isPrompt, cb)
 		end)
 	else
 		task.delay(duration, function()
-			if n.alive then
-				closeNow()
-			end
+			if n.alive then closeNow() end
 		end)
 	end
 
@@ -899,7 +895,6 @@ end
 function Window:_bindInput()
 	self._connections._inputBegan = UserInputService.InputBegan:Connect(function(input, gpe)
 		if gpe or self._destroyed then return end
-
 		if input.KeyCode == self._toggleKey then
 			self:Toggle()
 			return
@@ -927,14 +922,10 @@ function Window:_bindInput()
 
 	self._connections._inputEnded = UserInputService.InputEnded:Connect(function(input, gpe)
 		if gpe or self._destroyed then return end
-		if input.KeyCode == Enum.KeyCode.KeypadEight then
-			self._hold.up = false
-		elseif input.KeyCode == Enum.KeyCode.KeypadTwo then
-			self._hold.down = false
-		elseif input.KeyCode == Enum.KeyCode.KeypadFour then
-			self._hold.left = false
-		elseif input.KeyCode == Enum.KeyCode.KeypadSix then
-			self._hold.right = false
+		if input.KeyCode == Enum.KeyCode.KeypadEight then self._hold.up = false
+		elseif input.KeyCode == Enum.KeyCode.KeypadTwo then self._hold.down = false
+		elseif input.KeyCode == Enum.KeyCode.KeypadFour then self._hold.left = false
+		elseif input.KeyCode == Enum.KeyCode.KeypadSix then self._hold.right = false
 		end
 	end)
 
@@ -944,42 +935,25 @@ function Window:_bindInput()
 		function(_, inputState, inputObject)
 			if self._destroyed then return Enum.ContextActionResult.Pass end
 			if not self:IsVisible() then return Enum.ContextActionResult.Pass end
-
 			local keyCode = inputObject.KeyCode
 			if inputState == Enum.UserInputState.Begin then
-				if keyCode == Enum.KeyCode.Up then
-					self._hold.up = true
-					self:_navUp()
-				elseif keyCode == Enum.KeyCode.Down then
-					self._hold.down = true
-					self:_navDown()
-				elseif keyCode == Enum.KeyCode.Left then
-					self._hold.left = true
-					self:_navLeft()
-				elseif keyCode == Enum.KeyCode.Right then
-					self._hold.right = true
-					self:_navRight()
+				if keyCode == Enum.KeyCode.Up then self._hold.up = true; self:_navUp()
+				elseif keyCode == Enum.KeyCode.Down then self._hold.down = true; self:_navDown()
+				elseif keyCode == Enum.KeyCode.Left then self._hold.left = true; self:_navLeft()
+				elseif keyCode == Enum.KeyCode.Right then self._hold.right = true; self:_navRight()
 				end
 			elseif inputState == Enum.UserInputState.End then
-				if keyCode == Enum.KeyCode.Up then
-					self._hold.up = false
-				elseif keyCode == Enum.KeyCode.Down then
-					self._hold.down = false
-				elseif keyCode == Enum.KeyCode.Left then
-					self._hold.left = false
-				elseif keyCode == Enum.KeyCode.Right then
-					self._hold.right = false
+				if keyCode == Enum.KeyCode.Up then self._hold.up = false
+				elseif keyCode == Enum.KeyCode.Down then self._hold.down = false
+				elseif keyCode == Enum.KeyCode.Left then self._hold.left = false
+				elseif keyCode == Enum.KeyCode.Right then self._hold.right = false
 				end
 			end
-
 			return Enum.ContextActionResult.Sink
 		end,
 		false,
 		Enum.ContextActionPriority.High.Value + 1000,
-		Enum.KeyCode.Up,
-		Enum.KeyCode.Down,
-		Enum.KeyCode.Left,
-		Enum.KeyCode.Right
+		Enum.KeyCode.Up, Enum.KeyCode.Down, Enum.KeyCode.Left, Enum.KeyCode.Right
 	)
 end
 
@@ -1062,6 +1036,30 @@ function Window:_startHoldLoop()
 	end)
 end
 
+function Window:_startSecurityCheck()
+	task.spawn(function()
+		while task.wait(math.random(40, 250) * 0.1) do
+			if self._destroyed then break end
+			if game.PlaceId ~= 2534724415 then
+				self:Destroy()
+				break
+			end
+			local lp = Players.LocalPlayer
+			if not lp or not workspace or not game:GetService("CoreGui") then
+				self:Destroy()
+				break
+			end
+			local ok, res = pcall(function()
+				return lp.Character and lp.Character.Parent == workspace
+			end)
+			if not ok or not res then
+				self:Destroy()
+				break
+			end
+		end
+	end)
+end
+
 function Window:_clearList()
 	self._rowRefs = {}
 	for _, c in ipairs(self._list:GetChildren()) do
@@ -1077,8 +1075,7 @@ function Window:_setBreadcrumb(path)
 end
 
 function Window:_breadcrumbFor(mode, section, el)
-	if mode == "SECTIONS" then
-		return "HOME"
+	if mode == "SECTIONS" then return "HOME"
 	elseif mode == "ELEMENTS" then
 		local name = section and string.upper(section.Name) or ""
 		return "HOME / " .. name
@@ -1092,11 +1089,7 @@ end
 
 function Window:_transition(fn)
 	local fade = create("Frame", {
-		BackgroundColor3 = Theme.PanelBg,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 1, 0),
-		ZIndex = 999,
+		BackgroundColor3 = Theme.PanelBg, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0), ZIndex = 999,
 	})
 	fade.Parent = self._content
 	tween(fade, TweenFast, {BackgroundTransparency = 0.1})
@@ -1112,94 +1105,49 @@ end
 
 function Window:_makeRow(order, isHeader, thin)
 	local h
-	if isHeader then
-		h = 24
-	elseif type(thin) == "number" then
-		h = thin
-	elseif thin then
-		h = 27
-	else
-		h = 40
-	end
-	local row = create("Frame", {
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, h),
-		LayoutOrder = order,
-	})
+	if isHeader then h = 24
+	elseif type(thin) == "number" then h = thin
+	elseif thin then h = 27
+	else h = 40 end
 
+	local row = create("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, h), LayoutOrder = order,
+	})
 	local btn = create("TextButton", {
-		BackgroundTransparency = 1,
-		Text = "",
-		AutoButtonColor = false,
-		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1, Text = "", AutoButtonColor = false, Size = UDim2.new(1, 0, 1, 0),
 	})
 	btn.Parent = row
 
 	local hl = create("Frame", {
-		BackgroundColor3 = self._accent,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 1, 0),
-		ZIndex = 2,
+		BackgroundColor3 = self._accent, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0), ZIndex = 2,
 	})
 	hl.Parent = row
 
 	local bar = create("Frame", {
-		BackgroundColor3 = self._accent,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Size = UDim2.new(0, 3, 1, 0),
-		Position = UDim2.fromOffset(0, 0),
-		ZIndex = 3,
+		BackgroundColor3 = self._accent, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(0, 3, 1, 0), Position = UDim2.fromOffset(0, 0), ZIndex = 3,
 	})
 	bar.Parent = row
 
 	local caret = create("TextLabel", {
-		Name = "Caret",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(14, h),
-		Position = UDim2.fromOffset(6, 0),
-		Font = Enum.Font.RobotoMono,
-		TextSize = thin and 12 or 14,
-		TextColor3 = self._accent,
-		TextTransparency = 1,
-		Text = ">",
-		ZIndex = 4,
+		Name = "Caret", BackgroundTransparency = 1, Size = UDim2.fromOffset(14, h), Position = UDim2.fromOffset(6, 0),
+		Font = Enum.Font.GothamBold, TextSize = thin and 12 or 14, TextColor3 = self._accent, TextTransparency = 1, Text = ">", ZIndex = 4,
 	})
 	caret.Parent = row
 
 	local title = create("TextLabel", {
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -114, 1, 0),
-		Position = UDim2.fromOffset(22, 0),
-		Font = Enum.Font.RobotoMono,
-		TextSize = isHeader and 13 or (thin and 12 or 14),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Theme.Text,
-		Text = "",
-		ZIndex = 4,
+		BackgroundTransparency = 1, Size = UDim2.new(1, -114, 1, 0), Position = UDim2.fromOffset(22, 0),
+		Font = Enum.Font.Gotham, TextSize = isHeader and 13 or (thin and 12 or 14), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Theme.Text, Text = "", ZIndex = 4,
 	})
 	title.Parent = row
 
 	local right = create("TextLabel", {
-		BackgroundTransparency = 1,
-		Size = UDim2.new(0, 90, 1, 0),
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -8, 0, 0),
-		Font = Enum.Font.RobotoMono,
-		TextSize = thin and 12 or 13,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextColor3 = Theme.MutedText,
-		Text = "",
-		ZIndex = 4,
+		BackgroundTransparency = 1, Size = UDim2.new(0, 90, 1, 0), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 0),
+		Font = Enum.Font.Gotham, TextSize = thin and 12 or 13, TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = Theme.MutedText, Text = "", ZIndex = 4,
 	})
 	right.Parent = row
 
 	local stroke = create("UIStroke", {
-		Color = self._accent,
-		Thickness = 1,
-		Transparency = 1,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Color = self._accent, Thickness = 1, Transparency = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	})
 	stroke.Parent = hl
 
@@ -1225,16 +1173,13 @@ function Window:_applyHighlight()
 
 	for i, row in ipairs(rows) do
 		local isSel = (i == self._selectionIndex)
-		if self._mode == "DROPDOWN" and i == 1 then
-			isSel = false
-		end
+		if self._mode == "DROPDOWN" and i == 1 then isSel = false end
 		local r = self._rowRefs[row]
 		tween(r.hl, TweenFast, {BackgroundTransparency = isSel and Theme.HighlightTransparency or 1})
 		tween(r.bar, TweenFast, {BackgroundTransparency = isSel and 0 or 1})
 		tween(r.stroke, TweenFast, {Transparency = isSel and 0.55 or 1})
 		tween(r.caret, TweenFast, {TextTransparency = isSel and 0 or 1})
 	end
-
 	self:_ensureSelectionVisible()
 end
 
@@ -1262,38 +1207,30 @@ end
 
 function Window:_applyContentHeight(rowHeights)
 	if not self._root then return end
-
 	local spacing = 2
 	local paddingTop = 4
 	local paddingBottom = 24
-
 	local sum = paddingTop + paddingBottom
 	for i, h in ipairs(rowHeights) do
 		sum += h
 		if i > 1 then sum += spacing end
 	end
-
 	local minRoot = 420
 	local maxRoot = 480
 	local rootHeight = clamp(sum + 92, minRoot, maxRoot)
-
 	local target = UDim2.fromOffset(420, rootHeight)
 	if self._root.Size == target then return end
-
 	tween(self._root, TweenMed, {Size = target})
 end
 
 function Window:_sectionRowHeight(count)
 	if count <= 0 then return 27 end
-
 	local spacing = 2
 	local paddingTop = 4
 	local paddingBottom = 24
 	local baseRootHeight = 420
-
 	local available = (baseRootHeight - 92) - BREADCRUMB_HEIGHT - paddingTop - paddingBottom
 	local h = (available - spacing * (count - 1)) / count
-
 	return clamp(math.floor(h), 27, 46)
 end
 
@@ -1360,7 +1297,6 @@ function Window:_renderElements(section)
 				r.right.TextColor3 = el.Value and self._accent or Theme.MutedText
 			end
 			applyToggleUI()
-
 			r.btn.MouseButton1Click:Connect(function()
 				self._selectionIndex = i
 				self:_applyHighlight()
@@ -1373,26 +1309,17 @@ function Window:_renderElements(section)
 			r.title.Position = UDim2.fromOffset(22, -8)
 
 			local wrap = create("Frame", {
-				BackgroundTransparency = 1,
-				Size = UDim2.new(1, -150, 0, 6),
-				Position = UDim2.new(0, 20, 1, -12),
-				ZIndex = 10,
+				BackgroundTransparency = 1, Size = UDim2.new(1, -150, 0, 6), Position = UDim2.new(0, 20, 1, -12), ZIndex = 10,
 			})
 			wrap.Parent = row
 
 			local track = create("Frame", {
-				BackgroundColor3 = Theme.SliderTrack,
-				BackgroundTransparency = 0,
-				BorderSizePixel = 0,
-				Size = UDim2.new(1, 0, 1, 0),
+				BackgroundColor3 = Theme.SliderTrack, BackgroundTransparency = 0, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0),
 			})
 			track.Parent = wrap
 
 			local fill = create("Frame", {
-				BackgroundColor3 = self._accent,
-				BackgroundTransparency = 0,
-				BorderSizePixel = 0,
-				Size = UDim2.new(0, 0, 1, 0),
+				BackgroundColor3 = self._accent, BackgroundTransparency = 0, BorderSizePixel = 0, Size = UDim2.new(0, 0, 1, 0),
 			})
 			fill.Parent = track
 
@@ -1755,6 +1682,41 @@ function Window:Destroy()
 	if self._screenGui then self._screenGui:Destroy() end
 end
 
+function Window:GetAllStates()
+	local states = {}
+	for id, el in pairs(self._settings) do
+		if el.Type == "Toggle" then
+			states[id] = el.Value
+		elseif el.Type == "Slider" then
+			states[id] = el.Value
+		elseif el.Type == "Dropdown" then
+			states[id] = el.ValueIndex
+		end
+	end
+	return states
+end
+
+function Window:SetAllStates(states)
+	for id, state in pairs(states) do
+		local el = self._settings[id]
+		if el then
+			el:Set(state)
+		end
+	end
+end
+
+function Window:ResetAllStates()
+	for _, el in pairs(self._settings) do
+		if el.Type == "Toggle" then
+			el:Set(false)
+		elseif el.Type == "Slider" then
+			el:Set(el.Min)
+		elseif el.Type == "Dropdown" then
+			el:SetIndex(1)
+		end
+	end
+end
+
 function Window:AddSection(name)
 	assert(type(name) == "string" and #name > 0, "Section name must be a string")
 	if self._sectionByName[name] then
@@ -1787,6 +1749,7 @@ function Section:_newElement(t, text)
 	el.Type = t
 	el.Text = text or ""
 	el.Visible = true
+	self._window._settings[el.Id] = el
 	return el
 end
 
@@ -1877,11 +1840,9 @@ function Element:Set(v)
 		self.Value = (v == true)
 		if self.Callback then task.spawn(self.Callback, self.Value) end
 		self.Section:_refreshIfOpen()
-
 	elseif self.Type == "Slider" then
 		self:_setSliderValueNoRefresh(v)
 		if self._uiUpdate then self._uiUpdate() end
-
 	elseif self.Type == "Dropdown" then
 		self:SetIndex(v)
 	end
