@@ -583,6 +583,8 @@ function Window:_dismissNotification(n, instant)
 			pcall(function() tween(d, TweenNotifOut, {TextTransparency = 1}) end)
 		elseif d:IsA("UIStroke") then
 			pcall(function() tween(d, TweenNotifOut, {Transparency = 1}) end)
+		elseif d:IsA("Frame") then
+			pcall(function() tween(d, TweenNotifOut, {BackgroundTransparency = 1}) end)
 		end
 	end
 
