@@ -1070,7 +1070,16 @@ function Window:_transition(fn)
 end
 
 function Window:_makeRow(order, isHeader, thin)
-	local h = isHeader and 24 or (thin and 27 or 40)
+	local h
+	if isHeader then
+		h = 24
+	elseif type(thin) == "number" then
+		h = thin
+	elseif thin then
+		h = 27
+	else
+		h = 40
+	end
 	local row = create("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, h),
@@ -1233,20 +1242,35 @@ function Window:_applyContentHeight(rowHeights)
 	tween(self._root, TweenMed, {Size = target})
 end
 
+function Window:_sectionRowHeight(count)
+	if count <= 0 then return 27 end
+
+	local spacing = 2
+	local paddingTop = 4
+	local paddingBottom = 24
+	local baseRootHeight = 420
+
+	local available = (baseRootHeight - 92) - paddingTop - paddingBottom
+	local h = (available - spacing * (count - 1)) / count
+
+	return clamp(math.floor(h), 27, 46)
+end
+
 function Window:_renderSections()
 	self:_clearList()
 	self._mode = "SECTIONS"
 	self._currentSection = nil
 	self._dropdownState = nil
 
+	local rowH = self:_sectionRowHeight(#self._sections)
 	local rowHeights = {}
 	for i, sec in ipairs(self._sections) do
-		local row = self:_makeRow(i, false, true)
+		local row = self:_makeRow(i, false, rowH)
 		row.Parent = self._list
 		local r = self._rowRefs[row]
 		r.title.Text = string.upper(sec.Name)
 		r.right.Text = ">"
-		table.insert(rowHeights, 27)
+		table.insert(rowHeights, rowH)
 
 		r.btn.MouseButton1Click:Connect(function()
 			self._selectionIndex = i
