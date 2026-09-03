@@ -55,7 +55,6 @@ local ContextActionService = game:GetService("ContextActionService")
 local __UID = "UI_" .. HttpService:GenerateGUID(false)
 local __TAG = "__UI_STABLE_TAG_GTA_MENU"
 local __META_LOCK_NAME = "locked"
-local __INTEGRITY_HASH = nil
 
 local function __lockMeta(obj, methods)
 	return setmetatable(obj, {
@@ -64,169 +63,67 @@ local function __lockMeta(obj, methods)
 	})
 end
 
-local __nativeFunctions = {
-	pcall = pcall,
-	xpcall = xpcall,
-	error = error,
-	assert = assert,
-	type = type,
-	typeof = typeof,
-	getmetatable = getmetatable,
-	setmetatable = setmetatable,
-	rawget = rawget,
-	rawset = rawset,
-	rawequal = rawequal,
-	rawlen = rawlen,
-	select = select,
-	unpack = unpack or table.unpack,
-	ipairs = ipairs,
-	pairs = pairs,
-	next = next,
-	tostring = tostring,
-	tonumber = tonumber,
-	loadstring = loadstring,
-}
+local __nativePcall = pcall
+local __nativeType = type
+local __nativeTostring = tostring
 
-local function __computeIntegrityHash()
-	local hash = 0
-	local scriptContent = ""
-	pcall(function()
-		scriptContent = tostring(__INTEGRITY_HASH or "")
+local function __safeCheck(fn)
+	local ok, res = __nativePcall(fn)
+	return ok and res or false
+end
+
+local function __verifyEnvironment()
+	return __safeCheck(function()
+		local test = {}
+		local mt = getmetatable(test)
+		if mt ~= nil then return false end
+		return true
 	end)
-	for i = 1, #scriptContent do
-		hash = (hash * 31 + string.byte(scriptContent, i)) % 2^32
-	end
-	return hash
 end
 
-local function __verifyNativeFunction(name, expectedFunc)
-	local currentFunc = __G and __G[name] or _G[name]
-	if currentFunc ~= expectedFunc then
-		return false, "Function " .. name .. " has been modified"
-	end
-	local ok, res = pcall(function()
-		return string.find(tostring(currentFunc), "function") ~= nil
-	end)
-	if not ok or not res then
-		return false, "Function " .. name .. " signature invalid"
-	end
-	return true
-end
-
-local function __detectExecutor()
-	local suspiciousGlobals = {
-		"syn", "Synapse", "getgenv", "getrenv", "getsenv", "getmenv",
-		"hookfunction", "hookmetamethod", "newcclosure", "checkcaller",
-		"getnamecallmethod", "setnamecallmethod", "getcallingscript",
-		"cloneref", "clonefunction", "isreadonly", "setreadonly",
-		"rconsoleprint", "rconsoleinfo", "rconsolewarn", "rconsoleerr",
-		"rconsoleclear", "rconsolecreate", "rconsoleinput", "printconsole",
-		"readfile", "writefile", "appendfile", "listfiles", "loadfile",
-		"isfile", "isfolder", "makefolder", "delfolder", "delfile",
-		"request", "http_request", "httpget", "httppost",
-		"getcustomasset", "getobjects", "saveinstance", "decompile",
-		"getgc", "getloadedmodules", "getscripts", "getscripthash",
-		"fireclickdetector", "fireproximityprompt", "firetouchinterest",
-		"fireserver", "fire", "gethui", "getinstances", "getnilinstances",
-		"getconnections", "getsignal", "getproperties", "sethiddenproperty",
-		"isexecutorclosure", "checkclosure", "islclosure", "iscclosure",
-		"newproxy", "getrawmetatable", "setrawmetatable",
-	}
-	
-	for _, globalName in ipairs(suspiciousGlobals) do
-		if rawget(getfenv(), globalName) ~= nil then
-			return true, globalName
+local function __checkPlaceIntegrity()
+	return __safeCheck(function()
+		if game.PlaceId ~= 2534724415 then
+			return false
 		end
-	end
-	
-	if debug and debug.getinfo then
-		local ok, info = pcall(function()
-			return debug.getinfo(1)
-		end)
-		if ok and info and info.source then
-			local sourceStr = tostring(info.source)
-			if string.find(sourceStr, "executor") or string.find(sourceStr, "inject") then
-				return true, "Debug source anomaly"
-			end
-		end
-	end
-	
-	return false
-end
-
-local function __verifyCallStack()
-	local ok, level = pcall(function()
-		local depth = 0
-		while true do
-			local info = debug.getinfo(depth, "S")
-			if not info then break end
-			if info.source and string.find(info.source, "executor") then
-				return false, depth
-			end
-			depth = depth + 1
-			if depth > 50 then break end
+		local lp = Players.LocalPlayer
+		if not lp then return false end
+		if not workspace then return false end
+		local char = lp.Character
+		if char and char.Parent ~= workspace then
+			return false
 		end
 		return true
 	end)
-	return ok and level or false
 end
 
-local function __checkEnvironmentIntegrity()
-	local env = getfenv()
-	local criticalFunctions = {"pcall", "xpcall", "error", "assert", "type", "typeof"}
-	
-	for _, funcName in ipairs(criticalFunctions) do
-		local isValid, reason = __verifyNativeFunction(funcName, __nativeFunctions[funcName])
-		if not isValid then
-			return false, reason
+local function __detectSuspiciousActivity()
+	return __safeCheck(function()
+		local env = getfenv(0)
+		local suspicious = {"hookfunction", "hookmetamethod", "newcclosure"}
+		for _, name in ipairs(suspicious) do
+			if rawget(env, name) ~= nil then
+				return true
+			end
 		end
-	end
-	
-	local metatableOk = pcall(function()
-		local testTable = {}
-		local mt = getmetatable(testTable)
-		setmetatable(testTable, {__index = function() return "test" end})
-		local val = testTable.nonexistent
-		setmetatable(testTable, nil)
-		return val == "test"
+		return false
 	end)
-	
-	if not metatableOk then
-		return false, "Metatable manipulation detected"
-	end
-	
-	return true
 end
 
-local function __validateExecution()
+local __initialCheck = __safeCheck(function()
 	if RunService:IsServer() then
-		return false, "Server execution not allowed"
+		return false
 	end
-	
-	if game.PlaceId ~= 2534724415 then
-		return false, "Invalid PlaceId"
+	if not __checkPlaceIntegrity() then
+		return false
 	end
-	
-	local executorDetected, executorName = __detectExecutor()
-	if executorDetected then
-		//return false, "Executor detected: " .. tostring(executorName)
+	if not __verifyEnvironment() then
+		return false
 	end
-	
-	local envIntegrity = __checkEnvironmentIntegrity()
-	if not envIntegrity then
-		return false, "Environment integrity check failed"
-	end
-	
-	local stackValid = __verifyCallStack()
-	if not stackValid then
-		return false, "Call stack anomaly detected"
-	end
-	
 	return true
-end
+end)
 
-local __validationResult, __validationReason = __validateExecution()
-if not __validationResult then
+if not __initialCheck then
 	local Dead = {}
 	Dead.__index = Dead
 	function Dead.new()
@@ -396,8 +293,8 @@ function Library:CreateWindow(opts)
 	window._rowRefs = {}
 	window._activeSliderDrag = nil
 	window._settings = {}
-	window._integrityCheckInterval = math.random(45, 180)
-	window._lastIntegrityCheck = os.clock()
+	window._lastSecurityCheck = os.clock()
+	window._securityCheckInterval = math.random(60, 180)
 
 	window._hold = {
 		up=false, down=false, left=false, right=false,
@@ -416,8 +313,7 @@ function Library:CreateWindow(opts)
 	window:_startHoldLoop()
 	window:_startSliderDragLoop()
 	window:_buildNotifications()
-	window:_startSecurityCheck()
-	window:_startIntegrityMonitor()
+	window:_startSecurityMonitor()
 	window:Hide(true)
 
 	task.delay(1, function()
@@ -431,23 +327,28 @@ function Library:CreateWindow(opts)
 	return window
 end
 
-function Window:_startIntegrityMonitor()
+function Window:_startSecurityMonitor()
 	task.spawn(function()
 		while not self._destroyed do
-			task.wait(math.random(30, 120))
+			task.wait(self._securityCheckInterval)
 			if self._destroyed then break end
 			
-			local isValid, reason = __validateExecution()
-			if not isValid then
+			local checkResult = __safeCheck(function()
+				if not __checkPlaceIntegrity() then
+					return false
+				end
+				if not __verifyEnvironment() then
+					return false
+				end
+				return true
+			end)
+			
+			if not checkResult then
 				self:Destroy()
 				break
 			end
 			
-			local envCheck = __checkEnvironmentIntegrity()
-			if not envCheck then
-				self:Destroy()
-				break
-			end
+			self._securityCheckInterval = math.random(60, 180)
 		end
 	end)
 end
@@ -1032,30 +933,6 @@ function Window:_startHoldLoop()
 			if mult > 2.1 then steps = 3 end
 			currentSlider:_setSliderValueNoRefresh(currentSlider.Value + currentSlider.Step * dir * steps)
 			if currentSlider._uiUpdate then currentSlider._uiUpdate() end
-		end
-	end)
-end
-
-function Window:_startSecurityCheck()
-	task.spawn(function()
-		while task.wait(math.random(40, 250) * 0.1) do
-			if self._destroyed then break end
-			if game.PlaceId ~= 2534724415 then
-				self:Destroy()
-				break
-			end
-			local lp = Players.LocalPlayer
-			if not lp or not workspace or not game:GetService("CoreGui") then
-				self:Destroy()
-				break
-			end
-			local ok, res = pcall(function()
-				return lp.Character and lp.Character.Parent == workspace
-			end)
-			if not ok or not res then
-				self:Destroy()
-				break
-			end
 		end
 	end)
 end
